@@ -1,4 +1,4 @@
-// map.js - Pasugo Map Controller
+// map.js - Pasugo Map Controller - Modern Minimalist Design
 // Handles all map interactions, geolocation, and marker management
 
 class PasugoMap {
@@ -7,6 +7,7 @@ class PasugoMap {
     this.carMarker = null;
     this.destinationMarker = null;
     this.userLocationMarker = null;
+    this.routeLine = null;
     this.currentMapStyle = "street";
     this.watchId = null;
     this.animationInterval = null;
@@ -17,8 +18,8 @@ class PasugoMap {
     // Enhanced high accuracy geolocation options
     this.geoOptions = {
       enableHighAccuracy: true,
-      timeout: 30000, // Increased timeout for better GPS lock
-      maximumAge: 0, // Always get fresh position, never use cache
+      timeout: 30000,
+      maximumAge: 0,
     };
 
     // Track location attempts for better accuracy
@@ -36,18 +37,22 @@ class PasugoMap {
       maxZoom: 19,
     }).setView(this.defaultLocation, 15);
 
-    // Add street view tiles
+    // Add street view tiles with clean minimal style
     this.addStreetLayer();
 
     // Start getting user location immediately with multiple attempts
     this.getUserLocationWithRetry();
   }
 
-  // Add OpenStreetMap street layer
+  // Add minimal OpenStreetMap street layer
   addStreetLayer() {
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-    }).addTo(this.map);
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 19,
+        attribution: "",
+      },
+    ).addTo(this.map);
   }
 
   // Get user's current location with retry logic for better accuracy
@@ -61,7 +66,6 @@ class PasugoMap {
 
     console.log("🎯 Acquiring high-accuracy GPS location...");
 
-    // Try multiple times to get the best accuracy
     const maxAttempts = 3;
     let currentAttempt = 0;
 
@@ -76,17 +80,14 @@ class PasugoMap {
             `📍 Attempt ${currentAttempt}/${maxAttempts}: Accuracy ±${accuracy.toFixed(2)}m`,
           );
 
-          // Keep track of the most accurate position
           if (accuracy < this.bestAccuracy) {
             this.bestAccuracy = accuracy;
             this.bestPosition = position;
           }
 
-          // If we got very accurate position (< 20m) or reached max attempts, use it
           if (accuracy < 20 || currentAttempt >= maxAttempts) {
             this.handleLocationSuccess(this.bestPosition);
           } else {
-            // Try again for better accuracy
             setTimeout(tryGetLocation, 1000);
           }
         },
@@ -94,7 +95,6 @@ class PasugoMap {
           if (currentAttempt >= maxAttempts) {
             this.handleLocationError(this.getErrorMessage(error));
           } else {
-            // Try again on error
             setTimeout(tryGetLocation, 1000);
           }
         },
@@ -105,37 +105,16 @@ class PasugoMap {
     tryGetLocation();
   }
 
-  // Get user's current location with high accuracy
-  getUserLocation() {
-    this.showLoading(true);
-
-    if (!("geolocation" in navigator)) {
-      this.handleLocationError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    // Get current position with high accuracy
-    navigator.geolocation.getCurrentPosition(
-      (position) => this.handleLocationSuccess(position),
-      (error) => this.handleLocationError(this.getErrorMessage(error)),
-      this.geoOptions,
-    );
-  }
-
   // Handle successful location retrieval
   handleLocationSuccess(position) {
     const userLat = position.coords.latitude;
     const userLng = position.coords.longitude;
     const accuracy = position.coords.accuracy;
-    const heading = position.coords.heading;
-    const speed = position.coords.speed;
 
     console.log(`📍 Location acquired:`);
     console.log(`   Latitude: ${userLat}`);
     console.log(`   Longitude: ${userLng}`);
     console.log(`   Accuracy: ±${accuracy.toFixed(2)} meters`);
-    if (heading !== null) console.log(`   Heading: ${heading}°`);
-    if (speed !== null) console.log(`   Speed: ${speed.toFixed(2)} m/s`);
     console.log(
       `   Timestamp: ${new Date(position.timestamp).toLocaleString()}`,
     );
@@ -145,16 +124,19 @@ class PasugoMap {
     // Add user location marker
     this.addUserLocationMarker([userLat, userLng], accuracy);
 
-    // Center map on user's location with higher zoom for accuracy
-    this.map.setView([userLat, userLng], 17);
+    // Center map on user's location with higher zoom
+    this.map.setView([userLat, userLng], 16);
 
     // Add car marker near user (simulate nearby driver)
-    const carOffset = 0.0015; // ~150-200 meters
+    const carOffset = 0.003; // ~300 meters
     this.addCarMarker([userLat - carOffset, userLng - carOffset]);
 
     // Add destination marker (simulate destination)
-    const destOffset = 0.004; // ~400-500 meters
+    const destOffset = 0.008; // ~800 meters
     this.addDestinationMarker([userLat + destOffset, userLng + destOffset]);
+
+    // Draw route line
+    this.drawRoute();
 
     // Get street name from coordinates
     this.reverseGeocode(userLat, userLng);
@@ -175,7 +157,6 @@ class PasugoMap {
       `Unable to get your location:\n${errorMsg}\n\nUsing default location (Manila).`,
     );
 
-    // Use default location
     this.addUserLocationMarker(this.defaultLocation, 1000);
     this.map.setView(this.defaultLocation, 15);
 
@@ -189,6 +170,8 @@ class PasugoMap {
       this.defaultLocation[0] + 0.005,
       this.defaultLocation[1] + 0.005,
     ]);
+
+    this.drawRoute();
   }
 
   // Get readable error message
@@ -234,13 +217,12 @@ class PasugoMap {
 
     this.accuracyCircle = L.circle(latlng, {
       radius: accuracy,
-      color: "#4285F4",
-      fillColor: "#4285F4",
-      fillOpacity: 0.1,
+      color: "#000000",
+      fillColor: "#000000",
+      fillOpacity: 0.05,
       weight: 1,
     }).addTo(this.map);
 
-    // Show accuracy in console
     console.log(
       `🎯 Displaying position with ±${accuracy.toFixed(2)}m accuracy`,
     );
@@ -260,31 +242,24 @@ class PasugoMap {
         const userLng = position.coords.longitude;
         const accuracy = position.coords.accuracy;
 
-        // Only update if we got better or similar accuracy
         if (accuracy <= lastAccuracy * 1.5) {
           console.log(
             `🔄 Location updated: ${userLat.toFixed(6)}, ${userLng.toFixed(6)} (±${accuracy.toFixed(2)}m)`,
           );
 
-          // Update user location marker
           if (this.userLocationMarker) {
             this.userLocationMarker.setLatLng([userLat, userLng]);
           }
 
-          // Update accuracy circle
           if (this.accuracyCircle) {
             this.accuracyCircle.setLatLng([userLat, userLng]);
             this.accuracyCircle.setRadius(accuracy);
           }
 
-          // Recalculate distances
           this.updateDistanceAndETA();
+          this.updateRoute();
 
           lastAccuracy = accuracy;
-        } else {
-          console.log(
-            `⚠️ Ignoring less accurate position (±${accuracy.toFixed(2)}m vs ±${lastAccuracy.toFixed(2)}m)`,
-          );
         }
       },
       (error) => {
@@ -292,7 +267,7 @@ class PasugoMap {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 0, // Never use cached position
+        maximumAge: 0,
         timeout: 10000,
       },
     );
@@ -344,12 +319,12 @@ class PasugoMap {
       className: "custom-car-marker",
       html: `
         <div class="car-marker">
-          <i class="fa-solid fa-car-side" style="color: #000"></i>
+          <i class="fa-solid fa-car-side"></i>
           <span id="carETA">5 min</span>
         </div>
       `,
-      iconSize: [80, 40],
-      iconAnchor: [40, 20],
+      iconSize: [90, 40],
+      iconAnchor: [45, 20],
     });
 
     if (this.carMarker) {
@@ -370,12 +345,12 @@ class PasugoMap {
         <div style="position: relative;">
           <div class="pulse-ring"></div>
           <div class="destination-marker">
-            <i class="fa-solid fa-location-dot" style="color: #000; font-size: 20px;"></i>
+            <i class="fa-solid fa-location-dot"></i>
           </div>
         </div>
       `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      iconSize: [48, 48],
+      iconAnchor: [24, 48],
     });
 
     if (this.destinationMarker) {
@@ -387,9 +362,40 @@ class PasugoMap {
     }
   }
 
+  // Draw route line between car and destination
+  drawRoute() {
+    if (!this.carMarker || !this.destinationMarker) return;
+
+    const carPos = this.carMarker.getLatLng();
+    const destPos = this.destinationMarker.getLatLng();
+
+    if (this.routeLine) {
+      this.map.removeLayer(this.routeLine);
+    }
+
+    this.routeLine = L.polyline([carPos, destPos], {
+      color: "#000000",
+      weight: 4,
+      opacity: 0.6,
+      dashArray: "10, 10",
+      lineCap: "round",
+      lineJoin: "round",
+    }).addTo(this.map);
+  }
+
+  // Update route line as car moves
+  updateRoute() {
+    if (!this.routeLine || !this.carMarker || !this.destinationMarker) return;
+
+    const carPos = this.carMarker.getLatLng();
+    const destPos = this.destinationMarker.getLatLng();
+
+    this.routeLine.setLatLngs([carPos, destPos]);
+  }
+
   // Calculate real distance between two points (Haversine formula)
   calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
     const φ2 = (lat2 * Math.PI) / 180;
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -402,7 +408,7 @@ class PasugoMap {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
 
-    return distance; // in meters
+    return distance;
   }
 
   // Update distance and ETA based on real positions
@@ -412,7 +418,6 @@ class PasugoMap {
     const carPos = this.carMarker.getLatLng();
     const destPos = this.destinationMarker.getLatLng();
 
-    // Calculate real distance
     const distanceMeters = this.calculateDistance(
       carPos.lat,
       carPos.lng,
@@ -420,17 +425,15 @@ class PasugoMap {
       destPos.lng,
     );
 
-    // Update distance text
     const distanceEl = document.getElementById("distanceText");
     if (distanceEl) {
       if (distanceMeters < 1000) {
-        distanceEl.textContent = `${Math.round(distanceMeters)}m away`;
+        distanceEl.textContent = Math.round(distanceMeters);
       } else {
-        distanceEl.textContent = `${(distanceMeters / 1000).toFixed(1)}km away`;
+        distanceEl.textContent = (distanceMeters / 1000).toFixed(1);
       }
     }
 
-    // Calculate ETA (assuming 30 km/h average speed in city)
     const speedKmh = 30;
     const speedMs = (speedKmh * 1000) / 3600;
     const etaSeconds = distanceMeters / speedMs;
@@ -440,17 +443,26 @@ class PasugoMap {
     if (etaEl) {
       etaEl.textContent = etaMinutes;
     }
+
+    const carEtaEl = document.getElementById("carETA");
+    if (carEtaEl) {
+      carEtaEl.textContent = `${etaMinutes} min`;
+    }
   }
 
   // Animate car movement toward destination
   animateCarMovement() {
-    // Clear any existing animation
     if (this.animationInterval) {
       clearInterval(this.animationInterval);
     }
 
+    if (!this.destinationMarker) {
+      console.warn("⚠️ Destination marker not set yet, skipping animation");
+      return;
+    }
+
     let step = 0;
-    const totalSteps = 150; // Slower, smoother animation
+    const totalSteps = 200;
     const currentPos = this.carMarker.getLatLng();
     const targetPos = this.destinationMarker.getLatLng();
 
@@ -467,34 +479,28 @@ class PasugoMap {
       const newLng = currentPos.lng + lngStep * step;
       this.carMarker.setLatLng([newLat, newLng]);
 
-      // Update distance and ETA
       this.updateDistanceAndETA();
+      this.updateRoute();
 
       step++;
-    }, 150); // Move every 150ms for smoother animation
+    }, 100);
   }
 
   // Toggle map layer (street/satellite)
   toggleMapLayer() {
-    // Remove all tile layers
     this.map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
         this.map.removeLayer(layer);
       }
     });
 
-    // Toggle between styles
     if (this.currentMapStyle === "street") {
-      // Satellite view
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        {
-          maxZoom: 19,
-        },
+        { maxZoom: 19, attribution: "" },
       ).addTo(this.map);
       this.currentMapStyle = "satellite";
     } else {
-      // Street view
       this.addStreetLayer();
       this.currentMapStyle = "street";
     }
@@ -512,11 +518,9 @@ class PasugoMap {
 
         this.showLoading(false);
 
-        // Update user marker
         this.addUserLocationMarker([userLat, userLng], accuracy);
 
-        // Smoothly pan to user location
-        this.map.flyTo([userLat, userLng], 17, {
+        this.map.flyTo([userLat, userLng], 16, {
           duration: 1.5,
         });
 
@@ -560,17 +564,13 @@ class PasugoMap {
 let pasugoMap;
 
 document.addEventListener("DOMContentLoaded", function () {
-  // Initialize the map
   pasugoMap = new PasugoMap();
   pasugoMap.init();
-
-  // Setup UI event listeners
   setupEventListeners();
 });
 
 // Setup all event listeners
 function setupEventListeners() {
-  // Layer toggle button
   const layerBtn = document.getElementById("layerBtn");
   if (layerBtn) {
     layerBtn.addEventListener("click", function () {
@@ -578,20 +578,18 @@ function setupEventListeners() {
     });
   }
 
-  // Locate button
   const locateBtn = document.getElementById("locateBtn");
   if (locateBtn) {
     locateBtn.addEventListener("click", function () {
-      this.style.color = "#ffc107";
+      this.style.transform = "scale(0.9)";
       pasugoMap.recenterOnUser();
 
       setTimeout(() => {
-        this.style.color = "#000";
-      }, 1000);
+        this.style.transform = "scale(1)";
+      }, 200);
     });
   }
 
-  // Search pill
   const searchPill = document.querySelector(".search-pill");
   if (searchPill) {
     searchPill.addEventListener("click", function () {
@@ -599,7 +597,6 @@ function setupEventListeners() {
     });
   }
 
-  // FAB button
   const navFab = document.querySelector(".nav-fab");
   if (navFab) {
     navFab.addEventListener("click", function () {
