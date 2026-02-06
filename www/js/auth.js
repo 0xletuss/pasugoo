@@ -1,6 +1,7 @@
 /**
  * Authentication Module with Persistent Login
  * Handles user registration, login, token management, and auto-refresh
+ * Updated with OTP-based registration flow
  */
 
 // Use API_BASE_URL from main.js or define if not available
@@ -189,7 +190,7 @@ async function authenticatedFetch(url, options = {}) {
 }
 
 // ============================================
-// REGISTRATION FORM MANAGEMENT
+// REGISTRATION FORM MANAGEMENT (OTP-BASED)
 // ============================================
 
 class RegistrationForm {
@@ -414,11 +415,171 @@ class RegistrationForm {
 
     // Disable submit button
     submitBtn.disabled = true;
-    submitBtn.textContent = "Creating Account...";
+    submitBtn.textContent = "Sending OTP...";
 
     try {
       const formData = this.getFormData();
-      const response = await this.submitRegistration(formData);
+
+      // Step 1: Request OTP
+      await this.requestRegistrationOTP(formData.email);
+
+      // Store form data temporarily for OTP verification
+      sessionStorage.setItem("pendingRegistration", JSON.stringify(formData));
+
+      this.showSuccess(
+        successDiv,
+        "OTP sent to your email! Please check your inbox.",
+      );
+
+      // Show OTP input UI
+      setTimeout(() => {
+        this.showOTPVerificationUI();
+      }, 1500);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Create Account";
+    } catch (error) {
+      let errorMsg = error.message || "Registration failed. Please try again.";
+      this.showError(errorDiv, errorMsg);
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Create Account";
+    }
+  }
+
+  async requestRegistrationOTP(email) {
+    const response = await fetch(
+      `${API_BASE_URL_AUTH}/api/auth/register/request-otp`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email }),
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to send OTP");
+    }
+
+    return await response.json();
+  }
+
+  showOTPVerificationUI() {
+    // Hide the registration form
+    const registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+      registerForm.style.display = "none";
+    }
+
+    // Create OTP verification UI
+    const container = document.querySelector(".main-container");
+    const otpUI = document.createElement("div");
+    otpUI.id = "otpVerificationUI";
+    otpUI.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <h2>Verify Your Email</h2>
+        <p style="color: #666; margin-bottom: 20px;">
+          Enter the 6-digit code sent to your email
+        </p>
+        
+        <div class="form-group">
+          <input 
+            type="text" 
+            id="otpInput" 
+            maxlength="6" 
+            placeholder="Enter OTP"
+            style="text-align: center; font-size: 24px; letter-spacing: 8px;"
+            required
+          />
+        </div>
+        
+        <button id="verifyOTPBtn" class="btn btn-primary">
+          Verify & Register
+        </button>
+        
+        <div style="margin-top: 20px;">
+          <button id="resendOTPBtn" class="btn" style="background: transparent; color: var(--primary-black);">
+            Resend OTP
+          </button>
+        </div>
+        
+        <div style="margin-top: 15px;">
+          <button id="backToFormBtn" class="btn" style="background: transparent; color: #666;">
+            ← Back to form
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(otpUI);
+
+    // Add event listeners
+    document
+      .getElementById("verifyOTPBtn")
+      .addEventListener("click", () => this.verifyOTPAndRegister());
+    document
+      .getElementById("resendOTPBtn")
+      .addEventListener("click", () => this.resendOTP());
+    document
+      .getElementById("backToFormBtn")
+      .addEventListener("click", () => this.backToForm());
+
+    // Auto-submit on 6 digits
+    document.getElementById("otpInput").addEventListener("input", (e) => {
+      if (e.target.value.length === 6) {
+        this.verifyOTPAndRegister();
+      }
+    });
+  }
+
+  async verifyOTPAndRegister() {
+    const otpInput = document.getElementById("otpInput");
+    const verifyBtn = document.getElementById("verifyOTPBtn");
+    const errorDiv = document.getElementById("errorMessage");
+    const successDiv = document.getElementById("successMessage");
+
+    const otp = otpInput.value.trim();
+
+    if (otp.length !== 6) {
+      this.showError(errorDiv, "Please enter a valid 6-digit OTP");
+      return;
+    }
+
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = "Verifying...";
+
+    try {
+      const formData = JSON.parse(
+        sessionStorage.getItem("pendingRegistration"),
+      );
+
+      const response = await fetch(
+        `${API_BASE_URL_AUTH}/api/auth/register/verify-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: formData.email,
+            otp: otp,
+            full_name: formData.full_name,
+            phone_number: formData.phone_number,
+            password: formData.password,
+            user_type: formData.user_type,
+            address: formData.address || "",
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "OTP verification failed");
+      }
+
+      const result = await response.json();
+
+      // Clear stored form data
+      sessionStorage.removeItem("pendingRegistration");
 
       this.showSuccess(
         successDiv,
@@ -429,12 +590,64 @@ class RegistrationForm {
         window.location.href = "login.html";
       }, 2000);
     } catch (error) {
-      let errorMsg = error.message || "Registration failed. Please try again.";
-      this.showError(errorDiv, errorMsg);
-
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Create Account";
+      this.showError(errorDiv, error.message);
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = "Verify & Register";
     }
+  }
+
+  async resendOTP() {
+    const resendBtn = document.getElementById("resendOTPBtn");
+    const errorDiv = document.getElementById("errorMessage");
+    const successDiv = document.getElementById("successMessage");
+
+    resendBtn.disabled = true;
+    resendBtn.textContent = "Sending...";
+
+    try {
+      const formData = JSON.parse(
+        sessionStorage.getItem("pendingRegistration"),
+      );
+
+      const response = await fetch(`${API_BASE_URL_AUTH}/api/auth/otp/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          otp_type: "registration",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to resend OTP");
+      }
+
+      this.showSuccess(successDiv, "New OTP sent to your email!");
+
+      setTimeout(() => {
+        resendBtn.disabled = false;
+        resendBtn.textContent = "Resend OTP";
+      }, 30000); // Disable for 30 seconds
+    } catch (error) {
+      this.showError(errorDiv, error.message);
+      resendBtn.disabled = false;
+      resendBtn.textContent = "Resend OTP";
+    }
+  }
+
+  backToForm() {
+    const otpUI = document.getElementById("otpVerificationUI");
+    const registerForm = document.getElementById("registerForm");
+
+    if (otpUI) otpUI.remove();
+    if (registerForm) registerForm.style.display = "block";
+
+    // Clear error/success messages
+    const errorDiv = document.getElementById("errorMessage");
+    const successDiv = document.getElementById("successMessage");
+    if (errorDiv) errorDiv.style.display = "none";
+    if (successDiv) successDiv.style.display = "none";
   }
 
   getFormData() {
@@ -447,7 +660,7 @@ class RegistrationForm {
       address: document.getElementById("address")?.value.trim() || "",
     };
 
-    // Add rider-specific fields
+    // Add rider-specific fields if needed in the future
     if (this.userType === "rider") {
       data.id_number =
         document.getElementById("idNumber")?.value.trim() || null;
@@ -462,54 +675,6 @@ class RegistrationForm {
     }
 
     return data;
-  }
-
-  async submitRegistration(data) {
-    // Prepare form data if there's a file
-    let submitData = data;
-    let headers = { "Content-Type": "application/json" };
-    let endpoint = `${API_BASE_URL_AUTH}/api/auth/register`;
-
-    // If rider with file, use the rider registration endpoint
-    if (data.user_type === "rider" || data.id_file) {
-      const formData = new FormData();
-      formData.append("full_name", data.full_name);
-      formData.append("email", data.email);
-      formData.append("phone_number", data.phone_number);
-      formData.append("password", data.password);
-      formData.append("address", data.address);
-
-      // Add rider-specific fields
-      if (data.id_number) formData.append("id_number", data.id_number);
-      if (data.vehicle_type) formData.append("vehicle_type", data.vehicle_type);
-      if (data.vehicle_plate)
-        formData.append("vehicle_plate", data.vehicle_plate);
-      if (data.license_number)
-        formData.append("license_number", data.license_number);
-      if (data.service_zones)
-        formData.append("service_zones", data.service_zones);
-      if (data.id_file) formData.append("id_file", data.id_file);
-
-      submitData = formData;
-      delete headers["Content-Type"]; // Let browser set it for FormData
-      endpoint = `${API_BASE_URL_AUTH}/api/riders/register`;
-    }
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: headers,
-      body:
-        submitData instanceof FormData
-          ? submitData
-          : JSON.stringify(submitData),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Registration failed");
-    }
-
-    return await response.json();
   }
 
   showError(element, message) {
