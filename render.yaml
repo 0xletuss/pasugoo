@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pasugoo
+    env: static
+    buildCommand: ""
+    staticPublishPath: ./www
+    headers:
+      - path: /*
+        name: Content-Type
+        value: text/html; charset=utf-8
+      - path: /*.css
+        name: Content-Type
+        value: text/css
+      - path: /*.js
+        name: Content-Type
+        value: application/javascript
