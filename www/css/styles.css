@@ -1,0 +1,697 @@
+/* css/styles.css */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+:root {
+  --primary-yellow: #ffc107; /* The specific yellow from the image */
+  --primary-black: #000000;
+  --text-dark: #333333;
+  --text-light: #666666;
+  --input-bg: #f3f4f6;
+  --white: #ffffff;
+  --error: #dc3545;
+  --success: #28a745;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: var(--primary-yellow);
+  color: var(--text-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Layout Structure --- */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Top Header Area (Yellow part) */
+.top-header {
+  padding: 20px 30px 40px 30px;
+  background-color: var(--primary-yellow);
+}
+
+.nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.nav-back {
+  font-size: 24px;
+  color: var(--primary-black);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-action-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-black);
+  text-decoration: none;
+}
+
+.header-content h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--primary-black);
+}
+
+.header-content p {
+  font-size: 14px;
+  color: var(--text-dark);
+  opacity: 0.8;
+  max-width: 80%;
+}
+
+/* White Bottom Sheet (The curved container) */
+.main-container {
+  background-color: var(--white);
+  flex-grow: 1;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  padding: 40px 30px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  margin-top: -20px; /* Slight overlap fixes gaps */
+}
+
+/* --- Forms & Inputs --- */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-left: 15px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+/* Pill Shaped Inputs */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 15px 25px;
+  background-color: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: 50px; /* Pill shape */
+  font-size: 14px;
+  font-family: "Poppins", sans-serif;
+  color: var(--text-dark);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.form-group textarea {
+  border-radius: 20px; /* Less rounded for text areas */
+}
+
+/* OTP Input specific styling */
+#otp {
+  letter-spacing: 8px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: "Courier New", monospace;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  background-color: #fff;
+  border-color: var(--primary-yellow);
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+}
+
+/* --- Buttons --- */
+.btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--primary-black);
+  color: var(--white);
+  margin-top: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button Link for Resend */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-black);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--primary-yellow);
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Social Buttons (if you add them later or for future use) */
+.social-login {
+  margin-top: 30px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 15px;
+  background: var(--white);
+  border: 1px solid #eee;
+  border-radius: 50px;
+  text-decoration: none;
+  color: var(--text-dark);
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: 0.3s;
+}
+
+.social-btn:hover {
+  background-color: #f9f9f9;
+}
+
+.social-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+/* --- Utilities --- */
+.form-links {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 25px;
+}
+
+.link-secondary {
+  font-size: 12px;
+  color: var(--text-dark);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.separator {
+  display: none; /* Hidden in this design */
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 10px;
+}
+
+.alert {
+  padding: 15px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.alert-error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.alert-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Rider Fields Specifics */
+.rider-fields {
+  background-color: #fff9db; /* Very light yellow */
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: rotation 1s linear infinite;
+  vertical-align: middle;
+  margin-left: 10px;
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  .page-wrapper {
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f0f0; /* Grey background for desktop outside the phone view */
+  }
+
+  /* Simulate mobile view on desktop */
+  .mobile-container-view {
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--primary-yellow);
+    min-height: 100vh;
+    position: relative;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* --- SPLASH SCREEN STYLES (Add to bottom of styles.css) --- */
+
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff; /* White background like the image */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  overflow: hidden; /* Keeps shapes from causing scrollbars */
+}
+
+.shape {
+  position: absolute;
+  background-color: #ffc107; /* The deep yellow from the image */
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.splash-content {
+  text-align: center;
+  z-index: 10;
+}
+
+.splash-logo {
+  margin-bottom: 15px;
+}
+
+.splash-emoji {
+  font-size: 80px; /* Larger logo size like the reference */
+  margin-bottom: 10px;
+}
+
+.splash-title {
+  font-size: 48px;
+  font-weight: 900;
+  color: #000000;
+  margin: 0;
+  text-transform: none; /* Matches 'deeps' style */
+}
+
+.splash-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.shape-top {
+  width: 250px;
+  height: 250px;
+  top: -80px;
+  right: -80px;
+}
+
+.shape-bottom {
+  width: 300px;
+  height: 300px;
+  bottom: -100px;
+  left: -100px;
+}
+
+/* Spinner Ring - Customized for Yellow Background */
+.spinner {
+  margin: 40px auto 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.spinner-ring {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(0, 0, 0, 0.05);
+  border-top: 3px solid #ffc107;
+  border-radius: 50%;
+  margin: 30px auto;
+  animation: rotation 1s linear infinite;
+}
+
+.splash-loading-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Animations */
+@keyframes bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Actions Row */
+.actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  font-size: 13px; /* Slightly smaller text for utilities */
+}
+
+/* Ensure the checkbox group behaves inside the row */
+.actions-row .checkbox-group {
+  margin: 0; /* Remove default margins */
+}
+
+/* Input Error State */
+.input-error {
+  border-color: var(--error) !important;
+  background-color: #fff5f5;
+}
+
+.field-error {
+  color: var(--error);
+  display: block;
+  margin-top: 4px;
+  margin-left: 15px;
+  font-size: 12px;
+}
+/* ... [KEEP YOUR EXISTING CSS ABOVE THIS LINE] ... */
+
+/* =========================================
+   CUSTOMER DASHBOARD / MAP UI SPECIFICS
+   ========================================= */
+
+/* Map Container - Simulates the full screen map */
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #e5e5e5; /* Fallback */
+  background-image: url("https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Google_Maps_Logo_2020.svg/2275px-Google_Maps_Logo_2020.svg.png"); /* Placeholder for actual map API */
+  background-size: cover;
+  background-position: center;
+}
+
+/* To simulate the map look purely with CSS (Optional, replaces image above) */
+.map-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #f4f3f0;
+  z-index: 0;
+  /* Grid pattern to look like streets */
+  background-image:
+    linear-gradient(#e0e0e0 2px, transparent 2px),
+    linear-gradient(90deg, #e0e0e0 2px, transparent 2px);
+  background-size: 100px 100px;
+}
+
+/* Floating Top Search Bar */
+.floating-search {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+}
+
+.search-pill {
+  flex-grow: 1;
+  background: var(--primary-black); /* Replaces the green in image */
+  color: var(--white);
+  padding: 12px 20px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.search-pill i {
+  margin-right: 10px;
+  color: var(--primary-yellow);
+}
+
+.search-pill span {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Floating Map Buttons (Right Side) */
+.map-controls {
+  position: absolute;
+  top: 120px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  z-index: 10;
+}
+
+.control-btn {
+  width: 45px;
+  height: 45px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  color: var(--primary-black);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* Vehicle Pin on Map */
+.map-pin-car {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  background: var(--white);
+  padding: 8px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--primary-yellow);
+}
+
+.map-pin-car img {
+  width: 30px;
+}
+
+/* Bottom Sheet Container */
+.bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--white);
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  padding: 25px 25px 90px 25px; /* Extra padding bottom for nav bar */
+  box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Active Request Widget inside Bottom Sheet */
+.active-request-card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.route-icon {
+  font-size: 24px;
+  margin-right: 15px;
+  color: var(--primary-black);
+}
+
+.route-details h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-black);
+  margin-bottom: 4px;
+}
+
+.route-details span {
+  font-size: 13px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.action-btn-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--primary-yellow); /* Replaces green */
+  color: var(--primary-black);
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  margin-left: auto; /* Pushes to right */
+  box-shadow: 0 4px 10px rgba(255, 193, 7, 0.4);
+  cursor: pointer;
+}
+
+/* Bottom Navigation Dock */
+.bottom-nav-dock {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  background: var(--primary-black);
+  border-radius: 60px;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 30;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.nav-item {
+  color: var(--white);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 20px;
+  opacity: 0.6;
+  transition: 0.3s;
+  padding: 10px;
+}
+
+.nav-item.active {
+  opacity: 1;
+  color: var(--primary-yellow);
+}
+
+.nav-fab-container {
+  position: relative;
+  top: -25px; /* Floats above the dock */
+}
+
+.nav-fab {
+  width: 60px;
+  height: 60px;
+  background: var(--primary-yellow);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  color: var(--primary-black);
+  box-shadow: 0 0 0 8px var(--white); /* The white ring effect */
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.nav-fab:hover {
+  transform: scale(1.05);
+}

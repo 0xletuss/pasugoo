@@ -1,0 +1,600 @@
+<!-- 
+CLOUDINARY INTEGRATION - HTML EXAMPLES
+Complete implementation guide for Pasugo Mobile App
+-->
+
+<!-- 
+FILE 1: Update register.html (Rider Section)
+===============================================
+-->
+
+<!-- In the rider-fields section of register.html, update the ID upload section: -->
+
+<div class="form-group">
+  <label for="idUpload"
+    >Rider ID Document <span class="terms-required">*</span></label
+  >
+  <input
+    type="file"
+    id="idUpload"
+    name="idUpload"
+    accept="image/jpeg,image/png,.pdf"
+    style="display: none"
+  />
+
+  <button
+    type="button"
+    class="btn btn-secondary"
+    onclick="document.getElementById('idUpload').click()"
+  >
+    📁 Choose ID Document
+  </button>
+
+  <div id="idUploadStatus" style="margin-top: 10px; display: none">
+    <div id="idUploadPreview"></div>
+  </div>
+</div>
+
+<script>
+  document
+    .getElementById("idUpload")
+    .addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById("idUploadStatus");
+      const preview = document.getElementById("idUploadPreview");
+
+      // Show uploading state
+      status.style.display = "block";
+      preview.innerHTML =
+        '<p style="color: #ff9800;">⏳ Uploading ID document...</p>';
+
+      try {
+        // Upload using Cloudinary service
+        const result = await window.CloudinaryUpload.uploadRiderId(file);
+
+        // Show success
+        preview.innerHTML = `
+            <div style="padding: 10px; background: #d4edda; border-radius: 4px; border-left: 4px solid #28a745;">
+                ✅ ID Document Uploaded<br>
+                <small style="color: #666;">File: ${file.name} (${(file.size / 1024).toFixed(2)}KB)</small><br>
+                <a href="${result.data.url}" target="_blank" style="color: #007bff;">View Document</a>
+            </div>
+        `;
+
+        // Store URL in hidden field for form submission
+        let hiddenInput = document.getElementById("idUploadUrl");
+        if (!hiddenInput) {
+          hiddenInput = document.createElement("input");
+          hiddenInput.type = "hidden";
+          hiddenInput.id = "idUploadUrl";
+          hiddenInput.name = "id_document_url";
+          document.getElementById("registerForm").appendChild(hiddenInput);
+        }
+        hiddenInput.value = result.data.url;
+      } catch (error) {
+        preview.innerHTML = `
+            <div style="padding: 10px; background: #f8d7da; border-radius: 4px; border-left: 4px solid #dc3545;">
+                ❌ Upload Failed: ${error.message}
+                <br><small>File: ${file.name}</small>
+            </div>
+        `;
+        event.target.value = ""; // Reset input
+      }
+    });
+</script>
+
+<!-- 
+FILE 2: Add to index.html head section
+======================================
+-->
+
+<!-- Add these script references to www/index.html in the <head> section: -->
+
+<script src="js/cloudinary-upload.js"></script>
+
+<!-- 
+FILE 3: Create new page - bill-upload.html
+============================================
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Bill - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <style>
+      .upload-container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 8px;
+      }
+
+      .upload-zone {
+        border: 2px dashed #007bff;
+        border-radius: 8px;
+        padding: 40px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #f0f7ff;
+      }
+
+      .upload-zone:hover {
+        border-color: #0056b3;
+        background: #e7f3ff;
+      }
+
+      .upload-zone.dragover {
+        border-color: #0056b3;
+        background: #d4e8ff;
+        transform: scale(1.02);
+      }
+
+      .photo-preview {
+        margin: 20px 0;
+        text-align: center;
+      }
+
+      .photo-preview img {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 10px;
+        margin: 20px 0;
+      }
+
+      .btn-group button {
+        flex: 1;
+      }
+
+      .upload-status {
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 15px;
+        display: none;
+      }
+
+      .upload-status.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        display: block;
+      }
+
+      .upload-status.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        display: block;
+      }
+
+      .upload-status.loading {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="navbar-brand">
+          <h1>🚚 Pasugo</h1>
+        </div>
+      </div>
+    </nav>
+
+    <div class="upload-container">
+      <h2>📸 Upload Bill Photo</h2>
+      <p style="color: #666; margin-bottom: 20px">
+        Upload a photo of your bill. Supported formats: JPEG, PNG (Max 10MB)
+      </p>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone" id="uploadZone">
+        <p style="font-size: 24px; margin: 10px 0">📷</p>
+        <p style="margin: 10px 0">
+          <strong>Click to upload or drag & drop</strong>
+        </p>
+        <p style="font-size: 12px; color: #666">PNG, JPG up to 10MB</p>
+        <input
+          type="file"
+          id="billPhotoInput"
+          accept="image/*"
+          style="display: none"
+        />
+      </div>
+
+      <!-- Photo Preview -->
+      <div class="photo-preview" id="photoPreview" style="display: none"></div>
+
+      <!-- Action Buttons -->
+      <div class="btn-group" id="actionButtons" style="display: none">
+        <button class="btn btn-primary" onclick="submitBillPhoto()">
+          ✓ Confirm Upload
+        </button>
+        <button class="btn btn-secondary" onclick="resetUpload()">
+          ↻ Choose Another
+        </button>
+      </div>
+
+      <!-- Status Message -->
+      <div id="uploadStatus" class="upload-status"></div>
+
+      <!-- Back Button -->
+      <div style="text-align: center; margin-top: 20px">
+        <button
+          class="btn btn-secondary"
+          onclick="history.back()"
+          style="width: 100%"
+        >
+          ← Back
+        </button>
+      </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/cloudinary-upload.js"></script>
+    <script>
+      let selectedFile = null;
+
+      // Get request ID from URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const requestId = urlParams.get("request_id");
+
+      if (!requestId) {
+        showUploadStatus("Request ID not found", "error");
+      }
+
+      // File input handling
+      document
+        .getElementById("billPhotoInput")
+        .addEventListener("change", handleFileSelect);
+
+      // Drag and drop
+      const uploadZone = document.getElementById("uploadZone");
+
+      uploadZone.addEventListener("click", () => {
+        document.getElementById("billPhotoInput").click();
+      });
+
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.classList.add("dragover");
+      });
+
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.classList.remove("dragover");
+      });
+
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFileSelect({ target: { files: files } });
+        }
+      });
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          showUploadStatus("Please select an image file", "error");
+          return;
+        }
+
+        // Validate file size
+        if (file.size > 10 * 1024 * 1024) {
+          showUploadStatus("File exceeds 10MB limit", "error");
+          return;
+        }
+
+        selectedFile = file;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const preview = document.getElementById("photoPreview");
+          preview.innerHTML = `
+                    <img src="${e.target.result}" alt="Bill Preview">
+                    <p style="color: #666; margin-top: 10px;">
+                        ${file.name} • ${(file.size / 1024).toFixed(2)}KB
+                    </p>
+                `;
+          preview.style.display = "block";
+          document.getElementById("actionButtons").style.display = "flex";
+          document.getElementById("uploadStatus").className = "upload-status";
+        };
+        reader.readAsDataURL(file);
+      }
+
+      async function submitBillPhoto() {
+        if (!selectedFile || !requestId) {
+          showUploadStatus("Missing file or request ID", "error");
+          return;
+        }
+
+        showUploadStatus("⏳ Uploading...", "loading");
+
+        try {
+          const result = await window.CloudinaryUpload.uploadBillPhoto(
+            selectedFile,
+            requestId,
+          );
+
+          showUploadStatus("✅ Bill photo uploaded successfully!", "success");
+
+          // Redirect back after success
+          setTimeout(() => {
+            window.history.back();
+          }, 1500);
+        } catch (error) {
+          showUploadStatus(`❌ Upload failed: ${error.message}`, "error");
+        }
+      }
+
+      function resetUpload() {
+        selectedFile = null;
+        document.getElementById("billPhotoInput").value = "";
+        document.getElementById("photoPreview").style.display = "none";
+        document.getElementById("actionButtons").style.display = "none";
+        document.getElementById("uploadStatus").className = "upload-status";
+      }
+
+      function showUploadStatus(message, type) {
+        const status = document.getElementById("uploadStatus");
+        status.textContent = message;
+        status.className = `upload-status ${type}`;
+      }
+    </script>
+  </body>
+</html>
+
+<!-- 
+FILE 4: Add to dashboard.html (User Profile Section)
+=====================================================
+-->
+
+<div
+  class="profile-photo-section"
+  style="
+    text-align: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+  "
+>
+  <h3>Profile Photo</h3>
+
+  <div id="profilePhotoContainer" style="margin: 20px 0">
+    <img
+      id="profilePhotoImg"
+      src="https://via.placeholder.com/150"
+      alt="Profile Photo"
+      style="
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #007bff;
+      "
+    />
+  </div>
+
+  <input
+    type="file"
+    id="profilePhotoInput"
+    accept="image/*"
+    style="display: none"
+  />
+
+  <div
+    class="btn-group"
+    style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap"
+  >
+    <button
+      class="btn btn-primary"
+      onclick="document.getElementById('profilePhotoInput').click()"
+    >
+      📷 Upload Photo
+    </button>
+    <button class="btn btn-secondary" onclick="captureProfilePhoto()">
+      📸 Take Photo
+    </button>
+  </div>
+
+  <div id="profilePhotoStatus" style="margin-top: 15px; display: none"></div>
+</div>
+
+<script>
+  // Update profile photo on page load
+  window.addEventListener("load", () => {
+    const userData = window.auth?.getCurrentUser?.();
+    if (userData?.profile_photo_url) {
+      document.getElementById("profilePhotoImg").src =
+        userData.profile_photo_url;
+    }
+  });
+
+  // Profile photo upload
+  document
+    .getElementById("profilePhotoInput")
+    ?.addEventListener("change", async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById("profilePhotoStatus");
+      status.style.display = "block";
+      status.innerHTML = '<p style="color: #ff9800;">⏳ Uploading...</p>';
+
+      try {
+        const result = await window.CloudinaryUpload.uploadProfilePhoto(file);
+
+        // Update image
+        document.getElementById("profilePhotoImg").src = result.data.url;
+
+        status.innerHTML =
+          '<p style="color: #28a745;">✅ Profile photo updated!</p>';
+        setTimeout(() => {
+          status.style.display = "none";
+        }, 3000);
+      } catch (error) {
+        status.innerHTML = `<p style="color: #dc3545;">❌ Upload failed: ${error.message}</p>`;
+      }
+
+      event.target.value = "";
+    });
+
+  function captureProfilePhoto() {
+    window.CloudinaryUpload.capturePhoto(async (file) => {
+      const result = await window.CloudinaryUpload.uploadProfilePhoto(file);
+      document.getElementById("profilePhotoImg").src = result.data.url;
+      window.CloudinaryUpload.showNotification(
+        "Photo captured and uploaded!",
+        "success",
+      );
+    });
+  }
+</script>
+
+<!-- 
+FILE 5: Add to complaint form
+=============================
+-->
+
+<div class="form-group">
+  <label for="complaintAttachment">Attach Evidence (Optional)</label>
+  <input
+    type="file"
+    id="complaintAttachment"
+    accept="image/*,.pdf"
+    style="display: none"
+  />
+
+  <button
+    type="button"
+    class="btn btn-secondary"
+    onclick="document.getElementById('complaintAttachment').click()"
+  >
+    📎 Add Attachment
+  </button>
+
+  <div id="attachmentsList" style="margin-top: 10px"></div>
+</div>
+
+<script>
+  document
+    .getElementById("complaintAttachment")
+    ?.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const list = document.getElementById("attachmentsList");
+      const item = document.createElement("div");
+      item.style.cssText =
+        "padding: 10px; margin: 5px 0; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;";
+      item.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                📎 ${file.name} 
+                <span style="font-size: 12px; color: #666;"> (${(file.size / 1024 / 1024).toFixed(2)}MB)</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="removeAttachment(this)">Remove</button>
+        </div>
+    `;
+      list.appendChild(item);
+
+      // Store file reference
+      if (!window.complaintAttachments) window.complaintAttachments = [];
+      window.complaintAttachments.push(file);
+
+      event.target.value = "";
+    });
+
+  function removeAttachment(btn) {
+    btn.parentElement.parentElement.remove();
+  }
+</script>
+
+<!-- 
+INTEGRATION CHECKLIST
+======================
+
+✅ 1. Add <script src="js/cloudinary-upload.js"></script> to index.html
+
+✅ 2. Update register.html:
+   - Add ID upload section with CloudinaryUpload integration
+   - Store uploaded URL in hidden field
+
+✅ 3. Create bill-upload.html:
+   - Standalone page with drag-and-drop upload
+   - Link from bill request form
+
+✅ 4. Update dashboard.html:
+   - Add profile photo upload section
+   - Show current profile photo
+   - Add camera capture option
+
+✅ 5. Update complaint form:
+   - Add attachment upload
+   - Allow multiple attachments
+
+✅ 6. Test all uploads:
+   - Rider ID (register page)
+   - Bill photo (bill request)
+   - Profile photo (dashboard)
+   - Complaint attachment (complaint form)
+
+✅ 7. Verify Cloudinary URLs:
+   - All URLs should start with https://res.cloudinary.com/drw82hgul
+   - Check images display correctly
+   - Verify thumbnail generation works
+
+✅ 8. Error handling:
+   - Show friendly error messages
+   - Allow retry on failure
+   - Clear status messages after 3 seconds
+
+
+USAGE EXAMPLES
+==============
+
+// Upload file
+const result = await window.CloudinaryUpload.uploadBillPhoto(file, requestId);
+console.log(result.data.url); // Cloudinary URL
+
+// Show notification
+window.CloudinaryUpload.showNotification('Success!', 'success');
+
+// Capture photo from camera
+window.CloudinaryUpload.capturePhoto(async (file) => {
+    const result = await window.CloudinaryUpload.uploadProfilePhoto(file);
+});
+
+// Select photo from gallery
+window.CloudinaryUpload.selectPhoto(async (file) => {
+    const result = await window.CloudinaryUpload.uploadProfilePhoto(file);
+});
+
+// Check health
+const healthy = await window.CloudinaryUpload.checkHealth();
+console.log(healthy); // true or false
+
+-->

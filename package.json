@@ -1,0 +1,48 @@
+{
+  "name": "com.pasugo.app",
+  "displayName": "Pasugo",
+  "version": "1.0.0",
+  "description": "Fast & Reliable Bill Payment and Delivery Service",
+  "main": "index.js",
+  "scripts": {
+    "build-android": "cordova build android",
+    "build-ios": "cordova build ios",
+    "build": "cordova build",
+    "run-android": "cordova run android",
+    "run-ios": "cordova run ios",
+    "run": "cordova run android",
+    "emulate-android": "cordova emulate android",
+    "emulate-ios": "cordova emulate ios",
+    "prepare": "cordova prepare",
+    "clean": "cordova clean",
+    "serve": "cordova serve"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "pasugo",
+    "bill-payment",
+    "delivery"
+  ],
+  "author": "Pasugo Team",
+  "license": "MIT",
+  "devDependencies": {
+    "cordova": "^13.0.0",
+    "cordova-android": "^14.0.1",
+    "cordova-ios": "^8.0.0"
+  },
+  "cordova": {
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "plugins": {
+      "cordova-plugin-whitelist": {},
+      "cordova-plugin-statusbar": {},
+      "cordova-plugin-device": {},
+      "cordova-plugin-file": {},
+      "cordova-plugin-file-transfer": {},
+      "cordova-plugin-network-information": {},
+      "cordova-plugin-geolocation": {}
+    }
+  }
+}

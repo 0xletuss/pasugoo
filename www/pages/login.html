@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="mobile-container-view">
+        <div class="top-header">
+          <div class="nav-bar">
+            <a href="../index.html" class="nav-back">←</a>
+            <a href="register.html" class="nav-action-link">Register</a>
+          </div>
+          <div class="header-content">
+            <h1>Sign In</h1>
+            <p>
+              Welcome back to Pasugo. Please login to continue managing your
+              deliveries.
+            </p>
+          </div>
+        </div>
+
+        <div class="main-container">
+          <div
+            id="errorMessage"
+            class="alert alert-error"
+            style="display: none"
+          ></div>
+          <div
+            id="successMessage"
+            class="alert alert-success"
+            style="display: none"
+          ></div>
+
+          <form id="loginForm">
+            <div class="form-group">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="Email Address"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Password"
+                required
+              />
+            </div>
+
+            <div class="form-links">
+              <a href="forgot-password.html" class="link-secondary"
+                >Forgot Password?</a
+              >
+            </div>
+
+            <button type="submit" id="loginBtn" class="btn btn-primary">
+              <span id="btnText">Sign In</span>
+              <span id="btnLoader" class="loader" style="display: none"></span>
+            </button>
+          </form>
+
+          <div class="social-login">
+            <button class="social-btn">
+              <span
+                style="
+                  color: #4285f4;
+                  font-weight: bold;
+                  font-size: 18px;
+                  margin-right: 10px;
+                "
+                >G</span
+              >
+              Continue with Google
+            </button>
+            <button class="social-btn">
+              <span
+                style="
+                  color: #1877f2;
+                  font-weight: bold;
+                  font-size: 18px;
+                  margin-right: 10px;
+                "
+                >f</span
+              >
+              Continue with Facebook
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeLoginForm);
+      } else {
+        initializeLoginForm();
+      }
+
+      function initializeLoginForm() {
+        const savedEmail = localStorage.getItem("saved_email");
+        const savedRemember = localStorage.getItem("remember_me");
+
+        if (savedEmail && savedRemember === "true") {
+          document.getElementById("email").value = savedEmail;
+          const rememberCheckbox = document.getElementById("rememberMe");
+          if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+
+        if (!window.auth || !window.auth.LoginForm) {
+          setTimeout(initializeLoginForm, 100);
+          return;
+        }
+
+        try {
+          const loginForm = new window.auth.LoginForm("#loginForm");
+        } catch (error) {
+          console.error("Error initializing login form:", error);
+        }
+      }
+    </script>
+  </body>
+</html>

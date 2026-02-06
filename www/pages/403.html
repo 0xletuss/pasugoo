@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Denied - Pasugo</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Space Mono", monospace;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Animated background grid */
+      .grid-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: gridMove 20s linear infinite;
+        z-index: 0;
+      }
+
+      @keyframes gridMove {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(50px);
+        }
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        max-width: 600px;
+        padding: 40px;
+      }
+
+      .error-code {
+        font-family: "Syne", sans-serif;
+        font-size: 180px;
+        font-weight: 800;
+        background: linear-gradient(
+          135deg,
+          #ff6b6b 0%,
+          #ee5a6f 50%,
+          #c44569 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        margin-bottom: 20px;
+        text-shadow: 0 0 60px rgba(255, 107, 107, 0.4);
+        animation: glitch 3s infinite;
+      }
+
+      @keyframes glitch {
+        0%,
+        90%,
+        100% {
+          transform: translateX(0);
+        }
+        92% {
+          transform: translateX(-5px);
+        }
+        94% {
+          transform: translateX(5px);
+        }
+        96% {
+          transform: translateX(-3px);
+        }
+        98% {
+          transform: translateX(3px);
+        }
+      }
+
+      .error-icon {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 30px;
+        position: relative;
+      }
+
+      .shield {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #ff6b6b 0%, #c44569 100%);
+        clip-path: polygon(
+          50% 0%,
+          100% 25%,
+          100% 75%,
+          50% 100%,
+          0% 75%,
+          0% 25%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      .shield::before {
+        content: "⚠";
+        font-size: 60px;
+        color: white;
+        position: absolute;
+      }
+
+      h1 {
+        font-family: "Syne", sans-serif;
+        font-size: 42px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #fff;
+      }
+
+      .message {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 40px;
+        line-height: 1.6;
+      }
+
+      .user-info {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+      }
+
+      .user-info p {
+        margin: 8px 0;
+        font-size: 14px;
+      }
+
+      .user-info strong {
+        color: #ff6b6b;
+      }
+
+      .actions {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        padding: 14px 32px;
+        font-family: "Space Mono", monospace;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #ff6b6b 0%, #c44569 100%);
+        color: white;
+        box-shadow: 0 4px 20px rgba(255, 107, 107, 0.3);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 30px rgba(255, 107, 107, 0.4);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+      }
+
+      /* Particles */
+      .particle {
+        position: fixed;
+        width: 4px;
+        height: 4px;
+        background: rgba(255, 107, 107, 0.6);
+        border-radius: 50%;
+        animation: float 6s infinite ease-in-out;
+        z-index: 0;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0) translateX(0);
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-100vh) translateX(50px);
+          opacity: 0;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .error-code {
+          font-size: 120px;
+        }
+
+        h1 {
+          font-size: 32px;
+        }
+
+        .container {
+          padding: 20px;
+        }
+
+        .actions {
+          flex-direction: column;
+        }
+
+        .btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Grid Background -->
+    <div class="grid-background"></div>
+
+    <!-- Floating Particles -->
+    <div class="particle" style="left: 10%; animation-delay: 0s"></div>
+    <div class="particle" style="left: 30%; animation-delay: 2s"></div>
+    <div class="particle" style="left: 50%; animation-delay: 1s"></div>
+    <div class="particle" style="left: 70%; animation-delay: 3s"></div>
+    <div class="particle" style="left: 90%; animation-delay: 1.5s"></div>
+
+    <!-- Main Container -->
+    <div class="container">
+      <div class="error-icon">
+        <div class="shield"></div>
+      </div>
+
+      <div class="error-code">403</div>
+
+      <h1>Access Denied</h1>
+
+      <p class="message">
+        You don't have permission to access this page. This area is restricted
+        to specific user roles.
+      </p>
+
+      <div class="user-info" id="userInfo">
+        <p>
+          <strong>Current User:</strong>
+          <span id="userName">Not logged in</span>
+        </p>
+        <p><strong>Role:</strong> <span id="userRole">N/A</span></p>
+      </div>
+
+      <div class="actions">
+        <a href="#" class="btn btn-primary" id="dashboardBtn">
+          <span>← Go to Dashboard</span>
+        </a>
+        <a href="login.html" class="btn btn-secondary" id="loginBtn">
+          <span>Login as Different User</span>
+        </a>
+      </div>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script>
+      // Display user information
+      document.addEventListener("DOMContentLoaded", () => {
+        const user = window.auth?.getCurrentUser();
+
+        if (user) {
+          document.getElementById("userName").textContent =
+            user.full_name || user.email;
+          document.getElementById("userRole").textContent =
+            user.user_type || "Unknown";
+
+          // Set dashboard button based on user role
+          const dashboardBtn = document.getElementById("dashboardBtn");
+          const roleRedirects = {
+            customer: "dashboard.html",
+            rider: "rider-dashboard.html",
+            admin: "admin-dashboard.html",
+          };
+
+          dashboardBtn.href = roleRedirects[user.user_type] || "dashboard.html";
+        } else {
+          document.getElementById("userInfo").style.display = "none";
+          document.getElementById("dashboardBtn").style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>

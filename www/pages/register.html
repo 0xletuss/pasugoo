@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="mobile-container-view">
+        <div class="top-header">
+          <div class="nav-bar">
+            <a href="../index.html" class="nav-back">←</a>
+            <a href="login.html" class="nav-action-link">Login</a>
+          </div>
+          <div class="header-content">
+            <h1>Register</h1>
+            <p>Create your new account to start using Pasugo services.</p>
+          </div>
+        </div>
+
+        <div class="main-container">
+          <div
+            id="errorMessage"
+            class="alert alert-error"
+            style="display: none"
+          ></div>
+          <div
+            id="successMessage"
+            class="alert alert-success"
+            style="display: none"
+          ></div>
+
+          <form id="registerForm">
+            <div class="form-group">
+              <label for="userType">Register as</label>
+              <select id="userType" name="userType" required>
+                <option value="">-- Select Role --</option>
+                <option value="customer">Customer</option>
+                <option value="rider">Rider</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <input
+                type="text"
+                id="fullName"
+                name="fullName"
+                placeholder="Full Name"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="Email Address"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                placeholder="Phone Number"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <textarea
+                id="address"
+                name="address"
+                placeholder="Address"
+                rows="2"
+                required
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Password"
+                required
+              />
+              <div
+                class="password-strength"
+                id="passwordStrength"
+                style="display: none; margin-top: 10px; font-size: 12px"
+              >
+                <div
+                  class="strength-bar"
+                  style="height: 4px; background: #ddd; border-radius: 2px"
+                >
+                  <div
+                    class="strength-indicator"
+                    id="strengthIndicator"
+                    style="height: 100%; width: 0%; transition: 0.3s"
+                  ></div>
+                </div>
+                <small id="strengthText"></small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                required
+              />
+            </div>
+
+            <div id="riderFields" class="rider-fields" style="display: none">
+              <h3 style="margin-bottom: 15px; font-size: 16px">
+                🏍️ Rider Details
+              </h3>
+
+              <div class="form-group">
+                <input
+                  type="text"
+                  id="idNumber"
+                  name="idNumber"
+                  placeholder="National ID / ID Number"
+                />
+              </div>
+
+              <div class="form-group">
+                <select id="vehicleType" name="vehicleType">
+                  <option value="">Select Vehicle Type</option>
+                  <option value="motorcycle">Motorcycle</option>
+                  <option value="bicycle">Bicycle</option>
+                  <option value="car">Car</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <input
+                  type="text"
+                  id="vehiclePlateNumber"
+                  name="vehiclePlateNumber"
+                  placeholder="Plate Number"
+                />
+              </div>
+
+              <div class="form-group">
+                <input
+                  type="text"
+                  id="licenseNumber"
+                  name="licenseNumber"
+                  placeholder="License Number"
+                />
+              </div>
+
+              <div class="form-group">
+                <textarea
+                  id="serviceZones"
+                  name="serviceZones"
+                  placeholder="Service Areas (e.g. Makati, BGC)"
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label style="margin-left: 0">Upload ID</label>
+                <input
+                  type="file"
+                  id="idUpload"
+                  name="idUpload"
+                  style="background: white; border-radius: 10px; padding: 10px"
+                />
+              </div>
+            </div>
+
+            <div class="checkbox-group" style="margin: 20px 0">
+              <input
+                type="checkbox"
+                id="termsCheckbox"
+                name="termsCheckbox"
+                required
+              />
+              <label for="termsCheckbox" style="font-size: 12px; margin: 0">
+                I agree to the
+                <a
+                  href="#"
+                  style="
+                    color: var(--primary-black);
+                    text-decoration: underline;
+                  "
+                  >Terms & Conditions</a
+                >
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+          </form>
+
+          <div style="text-align: center; margin-top: 20px">
+            <span style="font-size: 12px; color: #666">Or register with</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+      // Keep existing JS Logic for rider toggle and validation
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeForm);
+      } else {
+        initializeForm();
+      }
+
+      function initializeForm() {
+        if (!window.auth || !window.auth.RegistrationForm) {
+          setTimeout(initializeForm, 100);
+          return;
+        }
+        try {
+          // Initialize form logic
+          const registerForm = new window.auth.RegistrationForm(
+            "#registerForm",
+            "customer",
+          );
+
+          // Add simple rider toggle logic manually if not in auth.js
+          const userTypeSelect = document.getElementById("userType");
+          const riderFields = document.getElementById("riderFields");
+          if (userTypeSelect && riderFields) {
+            userTypeSelect.addEventListener("change", function () {
+              riderFields.style.display =
+                this.value === "rider" ? "block" : "none";
+            });
+          }
+        } catch (error) {
+          console.error(error);
+        }
+
+        setupPasswordStrength();
+      }
+
+      function setupPasswordStrength() {
+        const passwordInput = document.getElementById("password");
+        const strengthDiv = document.getElementById("passwordStrength");
+        const strengthBar = document.getElementById("strengthIndicator");
+        const strengthText = document.getElementById("strengthText");
+
+        if (!passwordInput) return;
+
+        passwordInput.addEventListener("input", (e) => {
+          const val = e.target.value;
+          if (val.length > 0) strengthDiv.style.display = "block";
+          else strengthDiv.style.display = "none";
+
+          let strength = 0;
+          if (val.length > 5) strength += 33;
+          if (val.match(/[A-Z]/)) strength += 33;
+          if (val.match(/[0-9]/)) strength += 34;
+
+          if (strengthBar) {
+            strengthBar.style.width = strength + "%";
+            strengthBar.style.backgroundColor =
+              strength < 50 ? "#dc3545" : strength < 90 ? "#ffc107" : "#28a745";
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auth Debug - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <style>
+      .debug-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 30px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .debug-section {
+        margin: 20px 0;
+        padding: 15px;
+        background: white;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+      }
+      .debug-item {
+        padding: 10px;
+        margin: 5px 0;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        word-break: break-all;
+      }
+      .debug-label {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+      }
+      .debug-value {
+        color: #666;
+      }
+      .btn-group {
+        display: flex;
+        gap: 10px;
+        margin: 15px 0;
+      }
+      .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+      .btn-danger:hover {
+        background: #c82333;
+      }
+      .status-valid {
+        color: #28a745;
+        font-weight: bold;
+      }
+      .status-invalid {
+        color: #dc3545;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container">
+        <div class="navbar-brand">
+          <h1>🚚 Pasugo</h1>
+        </div>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="login.html">Login</a></li>
+          <li><a href="test-auth.html">Auth Debug</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="debug-container">
+      <h2>Authentication Debug Panel</h2>
+      <p>
+        This page helps you debug persistent login issues. Use this to check
+        your authentication status.
+      </p>
+
+      <!-- Session Status -->
+      <div class="debug-section">
+        <div class="debug-label">Session Status</div>
+        <div class="debug-item">
+          <div class="debug-label">Is Logged In:</div>
+          <div class="debug-value">
+            <span id="isLoggedIn" class="status-invalid">Checking...</span>
+          </div>
+        </div>
+        <div class="debug-item">
+          <div class="debug-label">Last Updated:</div>
+          <div class="debug-value" id="lastUpdated">-</div>
+        </div>
+      </div>
+
+      <!-- Token Information -->
+      <div class="debug-section">
+        <div class="debug-label">Stored Tokens</div>
+        <div class="debug-item">
+          <div class="debug-label">Access Token (first 50 chars):</div>
+          <div class="debug-value" id="accessToken">No token found</div>
+        </div>
+        <div class="debug-item">
+          <div class="debug-label">Refresh Token (first 50 chars):</div>
+          <div class="debug-value" id="refreshToken">No token found</div>
+        </div>
+        <div class="debug-item">
+          <div class="debug-label">Token Expiry Check:</div>
+          <div class="debug-value" id="tokenExpiry">-</div>
+        </div>
+      </div>
+
+      <!-- User Data -->
+      <div class="debug-section">
+        <div class="debug-label">User Data</div>
+        <div class="debug-item">
+          <div class="debug-label">User Email:</div>
+          <div class="debug-value" id="userEmail">No user data found</div>
+        </div>
+        <div class="debug-item">
+          <div class="debug-label">User Type:</div>
+          <div class="debug-value" id="userType">-</div>
+        </div>
+        <div class="debug-item">
+          <div class="debug-label">Full User Data:</div>
+          <div class="debug-value"><pre id="userDataFull">No data</pre></div>
+        </div>
+      </div>
+
+      <!-- API Configuration -->
+      <div class="debug-section">
+        <div class="debug-label">API Configuration</div>
+        <div class="debug-item">
+          <div class="debug-label">API Base URL:</div>
+          <div class="debug-value" id="apiUrl">-</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="debug-section">
+        <div class="debug-label">Actions</div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="refreshDebugInfo()">
+            Refresh Info
+          </button>
+          <button class="btn btn-secondary" onclick="testValidation()">
+            Test Validation
+          </button>
+          <button class="btn btn-secondary" onclick="testRefresh()">
+            Test Token Refresh
+          </button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-danger" onclick="clearAllTokens()">
+            Clear All Tokens
+          </button>
+          <button class="btn btn-secondary" onclick="goToDashboard()">
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+
+      <!-- Browser Console -->
+      <div class="debug-section">
+        <div class="debug-label">
+          Console Logs (open browser DevTools for more details)
+        </div>
+        <div class="debug-item">
+          <div
+            id="consoleLogs"
+            style="
+              height: 200px;
+              overflow-y: auto;
+              background: #222;
+              color: #0f0;
+              padding: 10px;
+              border-radius: 4px;
+              font-size: 11px;
+            "
+          >
+            <!-- Logs will appear here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Back Link -->
+      <div style="text-align: center; margin-top: 20px">
+        <a href="login.html" style="color: #007bff; text-decoration: none"
+          >← Back to Login</a
+        >
+      </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+      // Intercept console.log to display in the debug panel
+      const consoleLogs = document.getElementById("consoleLogs");
+      const originalLog = console.log;
+      const originalError = console.error;
+
+      function addLog(message, type = "log") {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement("div");
+        const color = type === "error" ? "#ff4444" : "#0f0";
+        logEntry.style.color = color;
+        logEntry.textContent = `[${timestamp}] ${message}`;
+        consoleLogs.appendChild(logEntry);
+        consoleLogs.scrollTop = consoleLogs.scrollHeight;
+      }
+
+      console.log = function (...args) {
+        originalLog(...args);
+        addLog(args.join(" "), "log");
+      };
+
+      console.error = function (...args) {
+        originalError(...args);
+        addLog("ERROR: " + args.join(" "), "error");
+      };
+
+      // Initial debug info
+      function refreshDebugInfo() {
+        console.log("Refreshing debug info...");
+
+        // Check authentication
+        const isLoggedIn = window.auth.isUserLoggedIn();
+        const statusElement = document.getElementById("isLoggedIn");
+        if (isLoggedIn) {
+          statusElement.textContent = "YES - User is logged in";
+          statusElement.className = "status-valid";
+        } else {
+          statusElement.textContent = "NO - User is not logged in";
+          statusElement.className = "status-invalid";
+        }
+
+        // Update timestamp
+        document.getElementById("lastUpdated").textContent =
+          new Date().toLocaleString();
+
+        // Get tokens
+        const accessToken = window.auth.AuthTokenService.getAccessToken();
+        const refreshToken = window.auth.AuthTokenService.getRefreshToken();
+
+        if (accessToken) {
+          document.getElementById("accessToken").textContent =
+            accessToken.substring(0, 50) + "...";
+        } else {
+          document.getElementById("accessToken").textContent = "Not found";
+        }
+
+        if (refreshToken) {
+          document.getElementById("refreshToken").textContent =
+            refreshToken.substring(0, 50) + "...";
+        } else {
+          document.getElementById("refreshToken").textContent = "Not found";
+        }
+
+        // Get user data
+        const userData = window.auth.AuthTokenService.getUserData();
+        if (userData) {
+          document.getElementById("userEmail").textContent =
+            userData.email || "N/A";
+          document.getElementById("userType").textContent =
+            userData.user_type || "N/A";
+          document.getElementById("userDataFull").textContent = JSON.stringify(
+            userData,
+            null,
+            2,
+          );
+        } else {
+          document.getElementById("userEmail").textContent = "No user data";
+          document.getElementById("userType").textContent = "N/A";
+          document.getElementById("userDataFull").textContent =
+            "No user data stored";
+        }
+
+        // API URL
+        document.getElementById("apiUrl").textContent =
+          window.API_BASE_URL || "Not defined";
+
+        console.log("Debug info refreshed");
+      }
+
+      // Test token validation
+      async function testValidation() {
+        console.log("Testing token validation...");
+        try {
+          const result = await window.auth.validateSession();
+          console.log("Validation result: " + result);
+          if (result) {
+            console.log("✓ Session is valid");
+          } else {
+            console.log("✗ Session is invalid");
+          }
+        } catch (error) {
+          console.error("Validation error: " + error.message);
+        }
+      }
+
+      // Test token refresh
+      async function testRefresh() {
+        console.log("Testing token refresh...");
+        try {
+          const refreshToken = window.auth.AuthTokenService.getRefreshToken();
+          if (!refreshToken) {
+            console.error("No refresh token available");
+            return;
+          }
+          await window.auth.TokenRefreshManager.refreshToken();
+          console.log("✓ Token refreshed successfully");
+          refreshDebugInfo();
+        } catch (error) {
+          console.error("Refresh error: " + error.message);
+        }
+      }
+
+      // Clear all tokens
+      function clearAllTokens() {
+        if (
+          confirm(
+            "Are you sure you want to clear all tokens? You will be logged out.",
+          )
+        ) {
+          console.log("Clearing all tokens...");
+          window.auth.AuthTokenService.clearTokens();
+          console.log("✓ All tokens cleared");
+          refreshDebugInfo();
+          setTimeout(() => {
+            window.location.href = "login.html";
+          }, 1500);
+        }
+      }
+
+      // Go to dashboard
+      function goToDashboard() {
+        if (window.auth.isUserLoggedIn()) {
+          console.log("Navigating to dashboard...");
+          window.location.href = "dashboard.html";
+        } else {
+          console.error("Not logged in - cannot navigate to dashboard");
+          alert("You must log in first");
+        }
+      }
+
+      // Initialize on load
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("=== Pasugo Auth Debug Panel ===");
+        console.log("API Base URL:", window.API_BASE_URL);
+        console.log("Auth module loaded:", !!window.auth);
+        refreshDebugInfo();
+      });
+    </script>
+  </body>
+</html>
