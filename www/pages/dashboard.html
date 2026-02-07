@@ -28,8 +28,8 @@
         z-index: 0;
       }
 
-      /* Custom marker styling */
-      .car-marker {
+      /* Custom rider marker styling */
+      .rider-marker {
         background: white;
         padding: 8px 12px;
         border-radius: 15px;
@@ -43,43 +43,14 @@
         white-space: nowrap;
       }
 
-      .destination-marker {
-        background: #ffc107;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.5);
-        border: 3px solid white;
+      .rider-marker i {
+        color: #ffc107;
+        font-size: 16px;
       }
 
-      .pulse-ring {
-        border: 3px solid #ffc107;
-        border-radius: 50%;
-        height: 60px;
-        width: 60px;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        animation: pulsate 1.5s ease-out infinite;
-        opacity: 0;
-      }
-
-      @keyframes pulsate {
-        0% {
-          transform: translate(-50%, -50%) scale(0.1);
-          opacity: 0;
-        }
-        50% {
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-50%, -50%) scale(1.5);
-          opacity: 0;
-        }
+      .rider-distance {
+        color: #333;
+        font-size: 11px;
       }
 
       /* User location marker */
@@ -123,9 +94,68 @@
       .location-loading.active {
         display: flex;
       }
+
+      /* Authentication warning banner */
+      .auth-warning {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #dc3545;
+        color: white;
+        padding: 15px;
+        text-align: center;
+        z-index: 9999;
+        display: none;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .auth-warning.show {
+        display: block;
+      }
+
+      .auth-warning button {
+        background: white;
+        color: #dc3545;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        margin-left: 10px;
+        cursor: pointer;
+      }
+
+      /* Riders info badge */
+      .riders-info-badge {
+        position: absolute;
+        top: 120px;
+        left: 20px;
+        background: white;
+        padding: 10px 15px;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .riders-info-badge i {
+        color: #ffc107;
+      }
     </style>
   </head>
   <body>
+    <!-- Authentication Warning Banner -->
+    <div class="auth-warning" id="authWarning">
+      <i class="fa-solid fa-exclamation-triangle"></i>
+      Please login to see available riders
+      <button id="loginBtn">Login</button>
+    </div>
+
     <!-- Loading indicator -->
     <div class="location-loading" id="locationLoading">
       <div class="spinner-ring"></div>
@@ -136,6 +166,12 @@
       <div class="map-wrapper">
         <!-- Real Leaflet Map Container -->
         <div id="map"></div>
+
+        <!-- Available Riders Badge -->
+        <div class="riders-info-badge">
+          <i class="fa-solid fa-motorcycle"></i>
+          <span><span id="availableRidersCount">0</span> riders nearby</span>
+        </div>
 
         <div class="floating-search">
           <div class="search-pill">
@@ -151,11 +187,14 @@
         </div>
 
         <div class="map-controls">
-          <div class="control-btn" id="layerBtn">
+          <div class="control-btn" id="layerBtn" title="Toggle map layer">
             <i class="fa-solid fa-layer-group"></i>
           </div>
-          <div class="control-btn" id="locateBtn">
+          <div class="control-btn" id="locateBtn" title="My location">
             <i class="fa-solid fa-location-crosshairs"></i>
+          </div>
+          <div class="control-btn" id="refreshRiders" title="Refresh riders">
+            <i class="fa-solid fa-rotate"></i>
           </div>
         </div>
       </div>
@@ -173,17 +212,16 @@
 
         <div class="active-request-card">
           <div class="route-icon">
-            <i class="fa-solid fa-diamond-turn-right"></i>
+            <i class="fa-solid fa-location-dot"></i>
           </div>
           <div class="route-details">
-            <span id="distanceText">500m away</span>
-            <h3 id="locationName">Avenue Jamin</h3>
-            <span style="color: var(--primary-yellow); font-weight: 600"
-              >Arriving in <span id="etaText">2</span> mins</span
-            >
+            <h3 id="locationName">Getting your location...</h3>
+            <span style="color: var(--text-light); font-size: 12px">
+              Tap <strong>+</strong> below to request a ride
+            </span>
           </div>
-          <button class="action-btn-circle">
-            <i class="fa-solid fa-map"></i>
+          <button class="action-btn-circle" id="createRequestBtn">
+            <i class="fa-solid fa-plus"></i>
           </button>
         </div>
       </div>

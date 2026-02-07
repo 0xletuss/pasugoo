@@ -1,16 +1,17 @@
 // map.js - Pasugo Map Controller - Modern Minimalist Design
 // Handles all map interactions, geolocation, and marker management
 
+const API_BASE_URL = "https://pasugo.onrender.com";
+
 class PasugoMap {
   constructor() {
     this.map = null;
-    this.carMarker = null;
-    this.destinationMarker = null;
     this.userLocationMarker = null;
-    this.routeLine = null;
+    this.accuracyCircle = null;
+    this.riderMarkers = []; // Array to store all rider markers
     this.currentMapStyle = "street";
     this.watchId = null;
-    this.animationInterval = null;
+    this.fetchRidersInterval = null;
 
     // Default fallback location (Manila, Philippines)
     this.defaultLocation = [14.5995, 120.9842];
@@ -23,9 +24,40 @@ class PasugoMap {
     };
 
     // Track location attempts for better accuracy
-    this.locationAttempts = 0;
     this.bestAccuracy = Infinity;
     this.bestPosition = null;
+
+    // User's current position
+    this.userPosition = null;
+
+    // Authentication state
+    this.isAuthenticated = false;
+    this.checkAuthentication();
+  }
+
+  // Check if user is authenticated
+  checkAuthentication() {
+    // Use the same auth check as your auth.js system
+    const token = localStorage.getItem("access_token");
+    const userData = localStorage.getItem("user_data");
+
+    if (token && userData) {
+      this.isAuthenticated = true;
+      this.currentUser = JSON.parse(userData);
+      console.log("✅ User is authenticated:", this.currentUser.full_name);
+    } else {
+      this.isAuthenticated = false;
+      console.warn("⚠️ No authentication token found - Please login first");
+      this.showAuthWarning();
+    }
+  }
+
+  // Show authentication warning
+  showAuthWarning() {
+    const warningEl = document.getElementById("authWarning");
+    if (warningEl) {
+      warningEl.style.display = "block";
+    }
   }
 
   // Initialize the map
@@ -37,10 +69,10 @@ class PasugoMap {
       maxZoom: 19,
     }).setView(this.defaultLocation, 15);
 
-    // Add street view tiles with clean minimal style
+    // Add street view tiles
     this.addStreetLayer();
 
-    // Start getting user location immediately with multiple attempts
+    // Start getting user location
     this.getUserLocationWithRetry();
   }
 
@@ -55,7 +87,7 @@ class PasugoMap {
     ).addTo(this.map);
   }
 
-  // Get user's current location with retry logic for better accuracy
+  // Get user's current location with retry logic
   getUserLocationWithRetry() {
     this.showLoading(true);
 
@@ -64,7 +96,7 @@ class PasugoMap {
       return;
     }
 
-    console.log("🎯 Acquiring high-accuracy GPS location...");
+    console.log("🎯 Acquiring GPS location...");
 
     const maxAttempts = 3;
     let currentAttempt = 0;
@@ -111,41 +143,40 @@ class PasugoMap {
     const userLng = position.coords.longitude;
     const accuracy = position.coords.accuracy;
 
-    console.log(`📍 Location acquired:`);
-    console.log(`   Latitude: ${userLat}`);
-    console.log(`   Longitude: ${userLng}`);
-    console.log(`   Accuracy: ±${accuracy.toFixed(2)} meters`);
     console.log(
-      `   Timestamp: ${new Date(position.timestamp).toLocaleString()}`,
+      `📍 Location acquired: ${userLat.toFixed(6)}, ${userLng.toFixed(6)} (±${accuracy.toFixed(2)}m)`,
     );
 
     this.showLoading(false);
 
+    // Store user position
+    this.userPosition = { lat: userLat, lng: userLng, accuracy: accuracy };
+
     // Add user location marker
     this.addUserLocationMarker([userLat, userLng], accuracy);
 
-    // Center map on user's location with higher zoom
+    // Center map on user's location
     this.map.setView([userLat, userLng], 16);
 
-    // Add car marker near user (simulate nearby driver)
-    const carOffset = 0.003; // ~300 meters
-    this.addCarMarker([userLat - carOffset, userLng - carOffset]);
-
-    // Add destination marker (simulate destination)
-    const destOffset = 0.008; // ~800 meters
-    this.addDestinationMarker([userLat + destOffset, userLng + destOffset]);
-
-    // Draw route line
-    this.drawRoute();
-
-    // Get street name from coordinates
+    // Get street name
     this.reverseGeocode(userLat, userLng);
 
-    // Start watching position for continuous updates
-    this.startWatchingPosition();
+    // Only do backend operations if authenticated
+    if (this.isAuthenticated) {
+      this.updateUserLocationToBackend(userLat, userLng, accuracy);
+      this.fetchAvailableRiders();
 
-    // Calculate and display actual distance
-    this.updateDistanceAndETA();
+      // Auto-refresh riders every 10 seconds
+      this.fetchRidersInterval = setInterval(() => {
+        this.fetchAvailableRiders();
+      }, 10000);
+    } else {
+      console.warn("⚠️ Skipping backend operations - not authenticated");
+      this.updateRiderCount(0);
+    }
+
+    // Start watching position
+    this.startWatchingPosition();
   }
 
   // Handle location errors
@@ -153,42 +184,168 @@ class PasugoMap {
     this.showLoading(false);
     console.error("Location error:", errorMsg);
 
-    alert(
-      `Unable to get your location:\n${errorMsg}\n\nUsing default location (Manila).`,
-    );
+    this.userPosition = {
+      lat: this.defaultLocation[0],
+      lng: this.defaultLocation[1],
+      accuracy: 1000,
+    };
 
     this.addUserLocationMarker(this.defaultLocation, 1000);
     this.map.setView(this.defaultLocation, 15);
-
-    const carOffset = 0.002;
-    this.addCarMarker([
-      this.defaultLocation[0] - carOffset,
-      this.defaultLocation[1] - carOffset,
-    ]);
-
-    this.addDestinationMarker([
-      this.defaultLocation[0] + 0.005,
-      this.defaultLocation[1] + 0.005,
-    ]);
-
-    this.drawRoute();
   }
 
   // Get readable error message
   getErrorMessage(error) {
     switch (error.code) {
       case error.PERMISSION_DENIED:
-        return "Location permission denied. Please enable location access in your browser settings.";
+        return "Location permission denied";
       case error.POSITION_UNAVAILABLE:
-        return "Location information is unavailable. Please check your device's location settings.";
+        return "Location unavailable";
       case error.TIMEOUT:
-        return "Location request timed out. Please try again.";
+        return "Location request timed out";
       default:
-        return "An unknown error occurred while getting your location.";
+        return "Unknown location error";
     }
   }
 
-  // Add user location marker with accuracy circle
+  // Update user location to backend
+  async updateUserLocationToBackend(lat, lng, accuracy) {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+
+      const response = await fetch(`${API_BASE_URL}/api/locations/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          latitude: lat,
+          longitude: lng,
+          accuracy: accuracy,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("✅ Location updated");
+      } else if (response.status === 401) {
+        this.isAuthenticated = false;
+        this.showAuthWarning();
+      }
+    } catch (error) {
+      console.error("❌ Location update error:", error);
+    }
+  }
+
+  // Fetch available riders
+  async fetchAvailableRiders() {
+    if (!this.userPosition || !this.isAuthenticated) {
+      this.updateRiderCount(0);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const { lat, lng } = this.userPosition;
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/locations/riders/available?lat=${lat}&lng=${lng}&radius=10&limit=50`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Found ${data.count} riders`);
+
+        if (data.riders && data.riders.length > 0) {
+          this.displayRidersOnMap(data.riders);
+          this.updateRiderCount(data.count);
+        } else {
+          this.clearRiderMarkers();
+          this.updateRiderCount(0);
+        }
+      } else {
+        if (response.status === 401) {
+          this.isAuthenticated = false;
+          this.showAuthWarning();
+        }
+        this.clearRiderMarkers();
+        this.updateRiderCount(0);
+      }
+    } catch (error) {
+      console.error("❌ Fetch riders error:", error);
+      this.clearRiderMarkers();
+      this.updateRiderCount(0);
+    }
+  }
+
+  // Display riders on map
+  displayRidersOnMap(riders) {
+    this.clearRiderMarkers();
+
+    riders.forEach((rider) => {
+      if (rider.latitude && rider.longitude) {
+        this.addRiderMarker(rider);
+      }
+    });
+
+    console.log(`📍 Displayed ${riders.length} riders on map`);
+  }
+
+  // Add rider marker
+  addRiderMarker(rider) {
+    const riderIcon = L.divIcon({
+      className: "custom-rider-marker",
+      html: `
+        <div class="rider-marker">
+          <i class="fa-solid fa-motorcycle"></i>
+          <span class="rider-distance">${rider.distance_km ? rider.distance_km.toFixed(1) + "km" : ""}</span>
+        </div>
+      `,
+      iconSize: [80, 40],
+      iconAnchor: [40, 20],
+    });
+
+    const marker = L.marker([rider.latitude, rider.longitude], {
+      icon: riderIcon,
+    }).addTo(this.map);
+
+    const popupContent = `
+      <div style="text-align: center; min-width: 150px;">
+        <strong>${rider.full_name}</strong><br>
+        <span style="font-size: 12px; color: #666;">
+          ${rider.vehicle_type} - ${rider.license_plate}
+        </span><br>
+        <span style="font-size: 12px;">
+          ⭐ ${rider.rating ? rider.rating.toFixed(1) : "N/A"} 
+          (${rider.total_tasks_completed} rides)
+        </span><br>
+        <span style="font-size: 11px; color: ${rider.availability_status === "available" ? "green" : "orange"};">
+          ${rider.availability_status.toUpperCase()}
+        </span>
+      </div>
+    `;
+
+    marker.bindPopup(popupContent);
+    this.riderMarkers.push(marker);
+  }
+
+  // Clear all rider markers
+  clearRiderMarkers() {
+    this.riderMarkers.forEach((marker) => this.map.removeLayer(marker));
+    this.riderMarkers = [];
+  }
+
+  // Update rider count
+  updateRiderCount(count) {
+    const countEl = document.getElementById("availableRidersCount");
+    if (countEl) countEl.textContent = count;
+  }
+
+  // Add user location marker
   addUserLocationMarker(latlng, accuracy = 50) {
     const userIcon = L.divIcon({
       className: "custom-user-marker",
@@ -210,7 +367,6 @@ class PasugoMap {
       );
     }
 
-    // Add accuracy circle
     if (this.accuracyCircle) {
       this.map.removeLayer(this.accuracyCircle);
     }
@@ -222,19 +378,13 @@ class PasugoMap {
       fillOpacity: 0.05,
       weight: 1,
     }).addTo(this.map);
-
-    console.log(
-      `🎯 Displaying position with ±${accuracy.toFixed(2)}m accuracy`,
-    );
   }
 
-  // Watch position continuously with high accuracy
+  // Watch position continuously
   startWatchingPosition() {
     if (this.watchId) {
       navigator.geolocation.clearWatch(this.watchId);
     }
-
-    let lastAccuracy = Infinity;
 
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -242,28 +392,23 @@ class PasugoMap {
         const userLng = position.coords.longitude;
         const accuracy = position.coords.accuracy;
 
-        if (accuracy <= lastAccuracy * 1.5) {
-          console.log(
-            `🔄 Location updated: ${userLat.toFixed(6)}, ${userLng.toFixed(6)} (±${accuracy.toFixed(2)}m)`,
-          );
+        this.userPosition = { lat: userLat, lng: userLng, accuracy: accuracy };
 
-          if (this.userLocationMarker) {
-            this.userLocationMarker.setLatLng([userLat, userLng]);
-          }
+        if (this.userLocationMarker) {
+          this.userLocationMarker.setLatLng([userLat, userLng]);
+        }
 
-          if (this.accuracyCircle) {
-            this.accuracyCircle.setLatLng([userLat, userLng]);
-            this.accuracyCircle.setRadius(accuracy);
-          }
+        if (this.accuracyCircle) {
+          this.accuracyCircle.setLatLng([userLat, userLng]);
+          this.accuracyCircle.setRadius(accuracy);
+        }
 
-          this.updateDistanceAndETA();
-          this.updateRoute();
-
-          lastAccuracy = accuracy;
+        if (this.isAuthenticated) {
+          this.updateUserLocationToBackend(userLat, userLng, accuracy);
         }
       },
       (error) => {
-        console.warn("Watch position error:", this.getErrorMessage(error));
+        console.warn("⚠️ Watch position error");
       },
       {
         enableHighAccuracy: true,
@@ -279,16 +424,18 @@ class PasugoMap {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
     }
+    if (this.fetchRidersInterval) {
+      clearInterval(this.fetchRidersInterval);
+      this.fetchRidersInterval = null;
+    }
   }
 
-  // Reverse geocode to get street name
+  // Reverse geocode
   reverseGeocode(lat, lng) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
 
     fetch(url, {
-      headers: {
-        "User-Agent": "PasugoApp/1.0",
-      },
+      headers: { "User-Agent": "PasugoApp/1.0" },
     })
       .then((response) => response.json())
       .then((data) => {
@@ -296,197 +443,17 @@ class PasugoMap {
           const name =
             data.address.road ||
             data.address.suburb ||
-            data.address.neighbourhood ||
             data.address.city ||
             "Your Location";
 
           const locationEl = document.getElementById("locationName");
-          if (locationEl) {
-            locationEl.textContent = name;
-          }
-
-          console.log(`📍 Location name: ${name}`);
+          if (locationEl) locationEl.textContent = name;
         }
       })
-      .catch((error) => {
-        console.warn("Geocoding error:", error);
-      });
+      .catch((error) => console.warn("Geocoding error:", error));
   }
 
-  // Add car marker
-  addCarMarker(latlng) {
-    const carIcon = L.divIcon({
-      className: "custom-car-marker",
-      html: `
-        <div class="car-marker">
-          <i class="fa-solid fa-car-side"></i>
-          <span id="carETA">5 min</span>
-        </div>
-      `,
-      iconSize: [90, 40],
-      iconAnchor: [45, 20],
-    });
-
-    if (this.carMarker) {
-      this.carMarker.setLatLng(latlng);
-    } else {
-      this.carMarker = L.marker(latlng, { icon: carIcon }).addTo(this.map);
-    }
-
-    // Start car animation
-    this.animateCarMovement();
-  }
-
-  // Add destination marker
-  addDestinationMarker(latlng) {
-    const destIcon = L.divIcon({
-      className: "custom-dest-marker",
-      html: `
-        <div style="position: relative;">
-          <div class="pulse-ring"></div>
-          <div class="destination-marker">
-            <i class="fa-solid fa-location-dot"></i>
-          </div>
-        </div>
-      `,
-      iconSize: [48, 48],
-      iconAnchor: [24, 48],
-    });
-
-    if (this.destinationMarker) {
-      this.destinationMarker.setLatLng(latlng);
-    } else {
-      this.destinationMarker = L.marker(latlng, { icon: destIcon }).addTo(
-        this.map,
-      );
-    }
-  }
-
-  // Draw route line between car and destination
-  drawRoute() {
-    if (!this.carMarker || !this.destinationMarker) return;
-
-    const carPos = this.carMarker.getLatLng();
-    const destPos = this.destinationMarker.getLatLng();
-
-    if (this.routeLine) {
-      this.map.removeLayer(this.routeLine);
-    }
-
-    this.routeLine = L.polyline([carPos, destPos], {
-      color: "#000000",
-      weight: 4,
-      opacity: 0.6,
-      dashArray: "10, 10",
-      lineCap: "round",
-      lineJoin: "round",
-    }).addTo(this.map);
-  }
-
-  // Update route line as car moves
-  updateRoute() {
-    if (!this.routeLine || !this.carMarker || !this.destinationMarker) return;
-
-    const carPos = this.carMarker.getLatLng();
-    const destPos = this.destinationMarker.getLatLng();
-
-    this.routeLine.setLatLngs([carPos, destPos]);
-  }
-
-  // Calculate real distance between two points (Haversine formula)
-  calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3;
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-
-    return distance;
-  }
-
-  // Update distance and ETA based on real positions
-  updateDistanceAndETA() {
-    if (!this.carMarker || !this.destinationMarker) return;
-
-    const carPos = this.carMarker.getLatLng();
-    const destPos = this.destinationMarker.getLatLng();
-
-    const distanceMeters = this.calculateDistance(
-      carPos.lat,
-      carPos.lng,
-      destPos.lat,
-      destPos.lng,
-    );
-
-    const distanceEl = document.getElementById("distanceText");
-    if (distanceEl) {
-      if (distanceMeters < 1000) {
-        distanceEl.textContent = Math.round(distanceMeters);
-      } else {
-        distanceEl.textContent = (distanceMeters / 1000).toFixed(1);
-      }
-    }
-
-    const speedKmh = 30;
-    const speedMs = (speedKmh * 1000) / 3600;
-    const etaSeconds = distanceMeters / speedMs;
-    const etaMinutes = Math.max(1, Math.ceil(etaSeconds / 60));
-
-    const etaEl = document.getElementById("etaText");
-    if (etaEl) {
-      etaEl.textContent = etaMinutes;
-    }
-
-    const carEtaEl = document.getElementById("carETA");
-    if (carEtaEl) {
-      carEtaEl.textContent = `${etaMinutes} min`;
-    }
-  }
-
-  // Animate car movement toward destination
-  animateCarMovement() {
-    if (this.animationInterval) {
-      clearInterval(this.animationInterval);
-    }
-
-    if (!this.destinationMarker) {
-      console.warn("⚠️ Destination marker not set yet, skipping animation");
-      return;
-    }
-
-    let step = 0;
-    const totalSteps = 200;
-    const currentPos = this.carMarker.getLatLng();
-    const targetPos = this.destinationMarker.getLatLng();
-
-    const latStep = (targetPos.lat - currentPos.lat) / totalSteps;
-    const lngStep = (targetPos.lng - currentPos.lng) / totalSteps;
-
-    this.animationInterval = setInterval(() => {
-      if (step >= totalSteps) {
-        clearInterval(this.animationInterval);
-        return;
-      }
-
-      const newLat = currentPos.lat + latStep * step;
-      const newLng = currentPos.lng + lngStep * step;
-      this.carMarker.setLatLng([newLat, newLng]);
-
-      this.updateDistanceAndETA();
-      this.updateRoute();
-
-      step++;
-    }, 100);
-  }
-
-  // Toggle map layer (street/satellite)
+  // Toggle map layer
   toggleMapLayer() {
     this.map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
@@ -506,7 +473,7 @@ class PasugoMap {
     }
   }
 
-  // Re-center map on user location
+  // Re-center on user
   recenterOnUser() {
     this.showLoading(true);
 
@@ -517,50 +484,41 @@ class PasugoMap {
         const accuracy = position.coords.accuracy;
 
         this.showLoading(false);
-
+        this.userPosition = { lat: userLat, lng: userLng, accuracy: accuracy };
         this.addUserLocationMarker([userLat, userLng], accuracy);
 
-        this.map.flyTo([userLat, userLng], 16, {
-          duration: 1.5,
-        });
+        this.map.flyTo([userLat, userLng], 16, { duration: 1.5 });
 
-        console.log(
-          `🎯 Re-centered on: ${userLat.toFixed(6)}, ${userLng.toFixed(6)} (±${accuracy.toFixed(2)}m)`,
-        );
+        if (this.isAuthenticated) {
+          this.fetchAvailableRiders();
+        }
       },
       (error) => {
         this.showLoading(false);
-        alert(`Unable to get location: ${this.getErrorMessage(error)}`);
       },
       this.geoOptions,
     );
   }
 
-  // Show/hide loading indicator
+  // Show/hide loading
   showLoading(show) {
     const loadingEl = document.getElementById("locationLoading");
     if (loadingEl) {
-      if (show) {
-        loadingEl.classList.add("active");
-      } else {
-        loadingEl.classList.remove("active");
-      }
+      show
+        ? loadingEl.classList.add("active")
+        : loadingEl.classList.remove("active");
     }
   }
 
   // Cleanup
   destroy() {
     this.stopWatchingPosition();
-    if (this.animationInterval) {
-      clearInterval(this.animationInterval);
-    }
-    if (this.map) {
-      this.map.remove();
-    }
+    this.clearRiderMarkers();
+    if (this.map) this.map.remove();
   }
 }
 
-// Initialize map when DOM is ready
+// Initialize
 let pasugoMap;
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -569,45 +527,38 @@ document.addEventListener("DOMContentLoaded", function () {
   setupEventListeners();
 });
 
-// Setup all event listeners
+// Event listeners
 function setupEventListeners() {
   const layerBtn = document.getElementById("layerBtn");
   if (layerBtn) {
-    layerBtn.addEventListener("click", function () {
-      pasugoMap.toggleMapLayer();
-    });
+    layerBtn.addEventListener("click", () => pasugoMap.toggleMapLayer());
   }
 
   const locateBtn = document.getElementById("locateBtn");
   if (locateBtn) {
-    locateBtn.addEventListener("click", function () {
-      this.style.transform = "scale(0.9)";
-      pasugoMap.recenterOnUser();
+    locateBtn.addEventListener("click", () => pasugoMap.recenterOnUser());
+  }
 
-      setTimeout(() => {
-        this.style.transform = "scale(1)";
-      }, 200);
+  const refreshBtn = document.getElementById("refreshRiders");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      if (pasugoMap.isAuthenticated) {
+        pasugoMap.fetchAvailableRiders();
+      } else {
+        alert("Please login first");
+      }
     });
   }
 
-  const searchPill = document.querySelector(".search-pill");
-  if (searchPill) {
-    searchPill.addEventListener("click", function () {
-      alert("Open Search Overlay");
-    });
-  }
-
-  const navFab = document.querySelector(".nav-fab");
-  if (navFab) {
-    navFab.addEventListener("click", function () {
-      alert("Open 'Create Request' Page");
+  const loginBtn = document.getElementById("loginBtn");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", () => {
+      window.location.href = "login.html"; // Same directory as dashboard
     });
   }
 }
 
-// Cleanup on page unload
-window.addEventListener("beforeunload", function () {
-  if (pasugoMap) {
-    pasugoMap.destroy();
-  }
+// Cleanup
+window.addEventListener("beforeunload", () => {
+  if (pasugoMap) pasugoMap.destroy();
 });

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rider Dashboard - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      .rider-dashboard {
+        padding: 30px;
+        max-width: 500px;
+        margin: 0 auto;
+      }
+
+      .status-card {
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .status-card h2 {
+        font-size: 20px;
+        margin-bottom: 15px;
+        color: var(--primary-black);
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px;
+        background: #f3f4f6;
+        border-radius: 15px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .location-info {
+        margin-top: 15px;
+        padding: 15px;
+        background: #fff9db;
+        border-radius: 15px;
+        font-size: 13px;
+      }
+
+      .location-info p {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="top-header">
+        <div class="nav-bar">
+          <a href="#" class="nav-back">
+            <i class="fa-solid fa-arrow-left"></i>
+          </a>
+          <h1 style="font-size: 20px; margin: 0">Rider Dashboard</h1>
+          <a href="#" class="nav-action-link">Menu</a>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <div class="rider-dashboard">
+          <div class="status-card">
+            <h2><i class="fa-solid fa-location-dot"></i> Location Status</h2>
+            <div class="status-indicator" id="locationStatus">
+              <i class="fa-solid fa-circle" style="color: #666"></i>
+              Starting location tracking...
+            </div>
+
+            <div class="location-info" id="locationInfo" style="display: none">
+              <p><strong>Latitude:</strong> <span id="currentLat">-</span></p>
+              <p><strong>Longitude:</strong> <span id="currentLng">-</span></p>
+              <p>
+                <strong>Accuracy:</strong> <span id="currentAccuracy">-</span>m
+              </p>
+              <p>
+                <strong>Last Update:</strong> <span id="lastUpdate">-</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="status-card">
+            <h2><i class="fa-solid fa-motorcycle"></i> Rider Information</h2>
+            <p style="color: var(--text-light); font-size: 14px">
+              Your location is being shared with customers in real-time. Make
+              sure your location services are enabled for the best experience.
+            </p>
+          </div>
+
+          <div class="status-card">
+            <h2><i class="fa-solid fa-info-circle"></i> Tips</h2>
+            <ul
+              style="
+                padding-left: 20px;
+                color: var(--text-light);
+                font-size: 13px;
+              "
+            >
+              <li>Keep your phone's GPS enabled</li>
+              <li>Location updates every 5 seconds</li>
+              <li>Customers can see you within 10km radius</li>
+              <li>Set your availability status in Settings</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rider Location Tracker Script -->
+    <script src="../js/rider-map.js"></script>
+
+    <!-- Display location info -->
+    <script>
+      // Override the tracker to display location info
+      document.addEventListener("DOMContentLoaded", function () {
+        const originalUpdateMethod =
+          RiderLocationTracker.prototype.updateLocationToBackend;
+
+        RiderLocationTracker.prototype.updateLocationToBackend =
+          async function () {
+            // Call original method
+            await originalUpdateMethod.call(this);
+
+            // Update UI with current location
+            if (this.currentPosition) {
+              document.getElementById("locationInfo").style.display = "block";
+              document.getElementById("currentLat").textContent =
+                this.currentPosition.latitude.toFixed(6);
+              document.getElementById("currentLng").textContent =
+                this.currentPosition.longitude.toFixed(6);
+              document.getElementById("currentAccuracy").textContent =
+                this.currentPosition.accuracy.toFixed(2);
+              document.getElementById("lastUpdate").textContent =
+                new Date().toLocaleTimeString();
+            }
+          };
+      });
+    </script>
+  </body>
+</html>

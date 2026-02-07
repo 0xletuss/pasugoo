@@ -458,7 +458,6 @@ body {
   margin-left: 15px;
   font-size: 12px;
 }
-/* ... [KEEP YOUR EXISTING CSS ABOVE THIS LINE] ... */
 
 /* =========================================
    CUSTOMER DASHBOARD / MAP UI SPECIFICS
@@ -471,25 +470,6 @@ body {
   height: 100vh;
   overflow: hidden;
   background-color: #e5e5e5; /* Fallback */
-  background-image: url("https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Google_Maps_Logo_2020.svg/2275px-Google_Maps_Logo_2020.svg.png"); /* Placeholder for actual map API */
-  background-size: cover;
-  background-position: center;
-}
-
-/* To simulate the map look purely with CSS (Optional, replaces image above) */
-.map-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #f4f3f0;
-  z-index: 0;
-  /* Grid pattern to look like streets */
-  background-image:
-    linear-gradient(#e0e0e0 2px, transparent 2px),
-    linear-gradient(90deg, #e0e0e0 2px, transparent 2px);
-  background-size: 100px 100px;
 }
 
 /* Floating Top Search Bar */
@@ -506,7 +486,7 @@ body {
 
 .search-pill {
   flex-grow: 1;
-  background: var(--primary-black); /* Replaces the green in image */
+  background: var(--primary-black);
   color: var(--white);
   padding: 12px 20px;
   border-radius: 50px;
@@ -549,27 +529,11 @@ body {
   color: var(--primary-black);
   cursor: pointer;
   font-size: 18px;
+  transition: transform 0.2s;
 }
 
-/* Vehicle Pin on Map */
-.map-pin-car {
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
-  background: var(--white);
-  padding: 8px;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 2px solid var(--primary-yellow);
-}
-
-.map-pin-car img {
-  width: 30px;
+.control-btn:active {
+  transform: scale(0.95);
 }
 
 /* Bottom Sheet Container */
@@ -626,7 +590,7 @@ body {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--primary-yellow); /* Replaces green */
+  background: var(--primary-yellow);
   color: var(--primary-black);
   border: none;
   display: flex;
@@ -636,6 +600,11 @@ body {
   margin-left: auto; /* Pushes to right */
   box-shadow: 0 4px 10px rgba(255, 193, 7, 0.4);
   cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.action-btn-circle:active {
+  transform: scale(0.95);
 }
 
 /* Bottom Navigation Dock */
@@ -694,4 +663,15 @@ body {
 
 .nav-fab:hover {
   transform: scale(1.05);
+}
+
+/* Custom Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-popup-content {
+  margin: 10px 15px;
+  font-family: "Poppins", sans-serif;
 }
