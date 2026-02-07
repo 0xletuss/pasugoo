@@ -89,26 +89,34 @@ class RiderLocationTracker {
         return;
       }
 
+      const payload = {
+        latitude: parseFloat(this.currentPosition.latitude),
+        longitude: parseFloat(this.currentPosition.longitude),
+        accuracy: Math.round(this.currentPosition.accuracy),
+      };
+
+      console.log("📤 Sending location update:", payload);
+
       const response = await fetch(`${API_BASE_URL}/api/locations/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          latitude: this.currentPosition.latitude,
-          longitude: this.currentPosition.longitude,
-          accuracy: this.currentPosition.accuracy,
-          address: null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Rider location updated to backend");
+        console.log("✅ Rider location updated to backend:", data);
         this.showLocationStatus("online");
       } else {
-        console.error("Failed to update rider location");
+        const errorData = await response.json().catch(() => ({}));
+        console.error(
+          "Failed to update rider location:",
+          response.status,
+          errorData,
+        );
         this.showLocationStatus("error");
       }
     } catch (error) {
