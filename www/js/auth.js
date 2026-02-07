@@ -1,7 +1,7 @@
 /**
  * Authentication Module with Persistent Login
  * Handles user registration, login, token management, and auto-refresh
- * Updated with OTP-based registration flow
+ * Updated with OTP-based registration flow and role-based routing
  */
 
 // Use API_BASE_URL from main.js or define if not available
@@ -798,6 +798,15 @@ class LoginForm {
       const result = await response.json();
       const data = result.data;
 
+      // DEBUG: Log the entire response to see what we're getting
+      console.log("=== LOGIN DEBUG ===");
+      console.log("Full result:", result);
+      console.log("Data object:", data);
+      console.log("User object:", data.user);
+      console.log("User type from user_type:", data.user?.user_type);
+      console.log("User type from role:", data.user?.role);
+      console.log("==================");
+
       // Store tokens and user data
       AuthTokenService.saveTokens(
         data.access_token,
@@ -808,7 +817,31 @@ class LoginForm {
       this.showSuccess(successDiv, "Login successful! Redirecting...");
 
       setTimeout(() => {
-        window.location.href = "dashboard.html";
+        // Redirect based on user type
+        // Handle Python enum format: "UserType.rider" -> "rider"
+        let userType = data.user.user_type || data.user.role;
+
+        // Strip "UserType." prefix if present
+        if (userType && userType.includes(".")) {
+          userType = userType.split(".")[1];
+        }
+
+        console.log("Determined user type for redirect:", userType);
+        console.log(
+          "Checking condition userType === 'rider':",
+          userType === "rider",
+        );
+
+        if (userType === "rider") {
+          console.log("REDIRECTING TO: rider-dashboard.html");
+          window.location.href = "rider-dashboard.html";
+        } else if (userType === "admin") {
+          console.log("REDIRECTING TO: admin-dashboard.html");
+          window.location.href = "admin-dashboard.html";
+        } else {
+          console.log("REDIRECTING TO: dashboard.html (customer)");
+          window.location.href = "dashboard.html"; // customer dashboard
+        }
       }, 1500);
     } catch (error) {
       this.showError(errorDiv, error.message);
@@ -971,6 +1004,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Check authentication on protected pages
   const protectedPages = [
     "dashboard.html",
+    "rider-dashboard.html",
+    "admin-dashboard.html",
     "profile.html",
     "transactions.html",
     "orders.html",
@@ -986,10 +1021,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.location.href = "../pages/login.html";
     } else {
       console.log("Auth module: Session valid");
+
+      // Check if user is on the correct dashboard
+      const user = getCurrentUser();
+      let userType = user?.user_type || user?.role;
+
+      // Strip "UserType." prefix if present
+      if (userType && userType.includes(".")) {
+        userType = userType.split(".")[1];
+      }
+
+      if (
+        userType === "rider" &&
+        currentPage.includes("dashboard.html") &&
+        !currentPage.includes("rider-dashboard")
+      ) {
+        console.log("Auth module: Rider on customer dashboard, redirecting...");
+        window.location.href = "rider-dashboard.html";
+      } else if (
+        userType === "customer" &&
+        currentPage.includes("rider-dashboard")
+      ) {
+        console.log("Auth module: Customer on rider dashboard, redirecting...");
+        window.location.href = "dashboard.html";
+      } else if (
+        userType === "admin" &&
+        !currentPage.includes("admin-dashboard")
+      ) {
+        console.log("Auth module: Admin on wrong dashboard, redirecting...");
+        window.location.href = "admin-dashboard.html";
+      }
     }
   }
 
-  // If on login/register page and already logged in, redirect to dashboard
+  // If on login/register page and already logged in, redirect to appropriate dashboard
   const authPages = ["login.html", "register.html"];
   if (authPages.some((page) => currentPage.includes(page))) {
     console.log(
@@ -1000,10 +1065,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       const isValid = await validateSession();
       if (isValid) {
         console.log("Auth module: Session valid, redirecting to dashboard");
-        // Redirect to dashboard, adjust path based on current directory
-        const dashboardPath = currentPage.includes("../")
-          ? "dashboard.html"
-          : "../pages/dashboard.html";
+
+        const user = getCurrentUser();
+        let userType = user?.user_type || user?.role;
+
+        // Strip "UserType." prefix if present
+        if (userType && userType.includes(".")) {
+          userType = userType.split(".")[1];
+        }
+
+        let dashboardPath;
+        if (userType === "rider") {
+          dashboardPath = currentPage.includes("../")
+            ? "rider-dashboard.html"
+            : "../pages/rider-dashboard.html";
+        } else if (userType === "admin") {
+          dashboardPath = currentPage.includes("../")
+            ? "admin-dashboard.html"
+            : "../pages/admin-dashboard.html";
+        } else {
+          dashboardPath = currentPage.includes("../")
+            ? "dashboard.html"
+            : "../pages/dashboard.html";
+        }
+
         window.location.href = dashboardPath;
       }
     }
