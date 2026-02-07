@@ -86,6 +86,7 @@ class RiderLocationTracker {
       const token = localStorage.getItem("access_token");
       if (!token) {
         console.error("No auth token found");
+        this.showDebugError("No auth token found");
         return;
       }
 
@@ -110,6 +111,7 @@ class RiderLocationTracker {
         const data = await response.json();
         console.log("✅ Rider location updated to backend:", data);
         this.showLocationStatus("online");
+        this.clearDebugError();
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error(
@@ -117,11 +119,51 @@ class RiderLocationTracker {
           response.status,
           errorData,
         );
+
+        // Show error on screen for mobile debugging
+        this.showDebugError(
+          `Error ${response.status}: ${JSON.stringify(errorData)}`,
+        );
         this.showLocationStatus("error");
       }
     } catch (error) {
       console.error("Error updating rider location:", error);
+      this.showDebugError(`Exception: ${error.message}`);
       this.showLocationStatus("error");
+    }
+  }
+
+  // Show debug error on screen (for mobile debugging)
+  showDebugError(message) {
+    let debugDiv = document.getElementById("debugError");
+    if (!debugDiv) {
+      debugDiv = document.createElement("div");
+      debugDiv.id = "debugError";
+      debugDiv.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 10px;
+        right: 10px;
+        background: #dc3545;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 12px;
+        z-index: 9999;
+        word-wrap: break-word;
+        max-height: 200px;
+        overflow-y: auto;
+      `;
+      document.body.appendChild(debugDiv);
+    }
+    debugDiv.innerHTML = `<strong>DEBUG:</strong><br>${message}`;
+  }
+
+  // Clear debug error
+  clearDebugError() {
+    const debugDiv = document.getElementById("debugError");
+    if (debugDiv) {
+      debugDiv.remove();
     }
   }
 

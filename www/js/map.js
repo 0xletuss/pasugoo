@@ -1,5 +1,6 @@
 // map.js - Pasugo Map Controller - Modern Minimalist Design
 // Handles all map interactions, geolocation, and marker management
+// FOR CUSTOMER DASHBOARD - Does NOT send location updates to backend
 
 const API_BASE_URL = "https://pasugo.onrender.com";
 
@@ -161,9 +162,9 @@ class PasugoMap {
     // Get street name
     this.reverseGeocode(userLat, userLng);
 
-    // Only do backend operations if authenticated
+    // Only fetch riders if authenticated (no location updates for customers)
     if (this.isAuthenticated) {
-      this.updateUserLocationToBackend(userLat, userLng, accuracy);
+      console.log("📍 Customer view - fetching nearby riders only");
       this.fetchAvailableRiders();
 
       // Auto-refresh riders every 10 seconds
@@ -175,7 +176,7 @@ class PasugoMap {
       this.updateRiderCount(0);
     }
 
-    // Start watching position
+    // Start watching position (for display only, not sending to backend)
     this.startWatchingPosition();
   }
 
@@ -205,36 +206,6 @@ class PasugoMap {
         return "Location request timed out";
       default:
         return "Unknown location error";
-    }
-  }
-
-  // Update user location to backend
-  async updateUserLocationToBackend(lat, lng, accuracy) {
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) return;
-
-      const response = await fetch(`${API_BASE_URL}/api/locations/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          latitude: lat,
-          longitude: lng,
-          accuracy: accuracy,
-        }),
-      });
-
-      if (response.ok) {
-        console.log("✅ Location updated");
-      } else if (response.status === 401) {
-        this.isAuthenticated = false;
-        this.showAuthWarning();
-      }
-    } catch (error) {
-      console.error("❌ Location update error:", error);
     }
   }
 
@@ -380,7 +351,7 @@ class PasugoMap {
     }).addTo(this.map);
   }
 
-  // Watch position continuously
+  // Watch position continuously (for display only - no backend updates)
   startWatchingPosition() {
     if (this.watchId) {
       navigator.geolocation.clearWatch(this.watchId);
@@ -403,9 +374,8 @@ class PasugoMap {
           this.accuracyCircle.setRadius(accuracy);
         }
 
-        if (this.isAuthenticated) {
-          this.updateUserLocationToBackend(userLat, userLng, accuracy);
-        }
+        // Note: Customers don't send location updates to backend
+        // Only riders do (via rider-map.js)
       },
       (error) => {
         console.warn("⚠️ Watch position error");
