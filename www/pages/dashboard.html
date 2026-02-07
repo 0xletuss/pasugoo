@@ -245,8 +245,8 @@
           <i class="fa-solid fa-car"></i>
         </a>
 
-        <a href="#" class="nav-item">
-          <i class="fa-regular fa-user"></i>
+        <a href="#" class="nav-item" id="logoutBtn" title="Logout">
+          <i class="fa-solid fa-right-from-bracket"></i>
         </a>
       </div>
     </div>
@@ -258,7 +258,36 @@
       crossorigin=""
     ></script>
 
+    <!-- Auth Module (must load before map.js) -->
+    <script src="../js/auth.js"></script>
+
     <!-- Map Controller -->
     <script src="../js/map.js"></script>
+
+    <!-- Logout handler -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        if (logoutBtn) {
+          logoutBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+
+            // Confirm logout
+            if (confirm("Are you sure you want to logout?")) {
+              // Use the auth module's logout function
+              if (window.auth && window.auth.logout) {
+                window.auth.logout();
+              } else {
+                // Fallback: manual logout
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = "login.html";
+              }
+            }
+          });
+        }
+      });
+    </script>
   </body>
 </html>
