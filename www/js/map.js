@@ -316,18 +316,17 @@ class PasugoMap {
     if (countEl) countEl.textContent = count;
   }
 
-  // Add user location marker
+  // Add user location marker with icon
   addUserLocationMarker(latlng, accuracy = 50) {
     const userIcon = L.divIcon({
       className: "custom-user-marker",
       html: `
-        <div style="position: relative;">
-          <div class="user-location-ring"></div>
-          <div class="user-location-marker"></div>
+        <div class="user-location-marker">
+          <i class="fa-solid fa-user"></i>
         </div>
       `,
-      iconSize: [50, 50],
-      iconAnchor: [25, 25],
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
     });
 
     if (this.userLocationMarker) {

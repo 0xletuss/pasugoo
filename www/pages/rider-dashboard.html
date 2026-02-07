@@ -52,6 +52,35 @@
       .location-info p {
         margin: 5px 0;
       }
+
+      .logout-btn {
+        width: 100%;
+        padding: 16px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .logout-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+      }
+
+      .logout-btn:active {
+        transform: translateY(0);
+      }
     </style>
   </head>
   <body>
@@ -110,9 +139,18 @@
               <li>Set your availability status in Settings</li>
             </ul>
           </div>
+
+          <!-- Logout Button -->
+          <button class="logout-btn" id="logoutBtn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- Auth Module -->
+    <script src="../js/auth.js"></script>
 
     <!-- Rider Location Tracker Script -->
     <script src="../js/rider-map.js"></script>
@@ -142,6 +180,41 @@
                 new Date().toLocaleTimeString();
             }
           };
+      });
+    </script>
+
+    <!-- Logout handler -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        if (logoutBtn) {
+          logoutBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+
+            // Confirm logout
+            if (
+              confirm(
+                "Are you sure you want to logout? Location tracking will be stopped.",
+              )
+            ) {
+              // Stop location tracking if active
+              if (window.riderTracker) {
+                window.riderTracker.stopTracking();
+              }
+
+              // Use the auth module's logout function
+              if (window.auth && window.auth.logout) {
+                window.auth.logout();
+              } else {
+                // Fallback: manual logout
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = "login.html";
+              }
+            }
+          });
+        }
       });
     </script>
   </body>
