@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Customer Home - Pasugo</title>
     <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/request-modal.css" />
 
     <link
       rel="stylesheet"
@@ -215,9 +216,6 @@
               Tap <strong>+</strong> below to request a ride
             </span>
           </div>
-          <button class="action-btn-circle" id="createRequestBtn">
-            <i class="fa-solid fa-plus"></i>
-          </button>
         </div>
       </div>
 
@@ -245,7 +243,474 @@
         </a>
       </div>
     </div>
+    <!-- ============================================
+     CLEAN REQUEST MODAL SYSTEM - NO DUPLICATES
+     Replace everything between </div> above and <script> tags below
+     ============================================ -->
 
+    <!-- REQUEST FORM MODAL -->
+    <div
+      class="request-modal-overlay"
+      id="requestModalOverlay"
+      style="display: none"
+    >
+      <div class="request-modal" id="requestModal">
+        <!-- Header -->
+        <div class="modal-header">
+          <button class="modal-close" id="closeRequestBtn">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <h2 id="formTitle">New Request</h2>
+          <div class="modal-progress">
+            <span class="step-indicator active" id="step1Indicator">1</span>
+            <span class="step-indicator" id="step2Indicator">2</span>
+            <span class="step-indicator" id="step3Indicator">3</span>
+          </div>
+        </div>
+
+        <!-- FORM CONTAINER -->
+        <div class="modal-content">
+          <!-- STEP 1: SERVICE TYPE -->
+          <div class="form-step active" id="step1">
+            <h3>What service do you need?</h3>
+
+            <div class="service-grid">
+              <div class="service-card" data-service="groceries">
+                <i class="fa-solid fa-bag-shopping"></i>
+                <span>Buy Groceries</span>
+              </div>
+              <div class="service-card" data-service="bills">
+                <i class="fa-solid fa-receipt"></i>
+                <span>Pay Bills</span>
+              </div>
+              <div class="service-card" data-service="delivery">
+                <i class="fa-solid fa-box"></i>
+                <span>Pick & Deliver</span>
+              </div>
+              <div class="service-card" data-service="pharmacy">
+                <i class="fa-solid fa-pills"></i>
+                <span>Pharmacy</span>
+              </div>
+              <div class="service-card" data-service="pickup">
+                <i class="fa-solid fa-person"></i>
+                <span>Pick Me</span>
+              </div>
+              <div class="service-card" data-service="documents">
+                <i class="fa-solid fa-file-contract"></i>
+                <span>Documents</span>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="step1Next" disabled>
+              Continue
+            </button>
+          </div>
+
+          <!-- STEP 2: DETAILS & ITEMS -->
+          <div class="form-step" id="step2">
+            <h3 id="step2Title">What groceries do you need?</h3>
+
+            <!-- Vehicle Selection (only shows for pickup) -->
+            <div id="vehicleSection" style="display: none; margin-bottom: 24px">
+              <label
+                style="
+                  display: block;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #333;
+                  margin-bottom: 12px;
+                "
+              >
+                Choose Vehicle Type
+              </label>
+              <div class="vehicle-grid">
+                <div class="vehicle-card" data-vehicle="motorcycle">
+                  <i class="fa-solid fa-motorcycle"></i>
+                  <span>Motorcycle</span>
+                </div>
+                <div class="vehicle-card" data-vehicle="car">
+                  <i class="fa-solid fa-car"></i>
+                  <span>Car</span>
+                </div>
+                <div class="vehicle-card" data-vehicle="van">
+                  <i class="fa-solid fa-van-shuttle"></i>
+                  <span>Van</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bill Photo Upload (only shows for bills) -->
+            <div
+              id="billPhotoSection"
+              style="display: none; margin-bottom: 24px"
+            >
+              <label
+                style="
+                  display: block;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #333;
+                  margin-bottom: 12px;
+                "
+              >
+                Upload Bill Photos
+              </label>
+              <div class="photo-upload-area" id="photoUploadArea">
+                <input
+                  type="file"
+                  id="billPhotoInput"
+                  accept="image/*"
+                  multiple
+                  style="display: none"
+                />
+                <div class="upload-placeholder">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p>Tap to upload bill photos</p>
+                  <small>PNG, JPG, GIF up to 10MB</small>
+                </div>
+              </div>
+              <div
+                id="photoPreviewContainer"
+                class="photo-preview-container"
+              ></div>
+            </div>
+            <div
+              id="fileUploadSection"
+              style="display: none; margin-bottom: 24px"
+            >
+              <label>
+                <i class="fa-solid fa-paperclip"></i> Attach Files (Optional)
+              </label>
+              <div class="file-upload-area" id="fileUploadArea">
+                <input
+                  type="file"
+                  id="generalFileInput"
+                  accept="*/*"
+                  multiple
+                  style="display: none"
+                />
+                <div class="file-upload-placeholder">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p>Tap to upload files</p>
+                  <small
+                    >Any file type • Max 25MB per file • Up to 10 files</small
+                  >
+                </div>
+              </div>
+              <div
+                id="filePreviewContainer"
+                class="file-preview-container"
+              ></div>
+            </div>
+            <div class="form-group">
+              <label id="itemsLabel">Items List</label>
+
+              <!-- Groceries Items Form (dynamic) -->
+              <div id="groceriesItemsForm" style="display: none">
+                <div id="itemsContainer"></div>
+                <button type="button" id="addItemBtn" class="btn-add-item">
+                  <i class="fa-solid fa-plus"></i> Add Item
+                </button>
+              </div>
+
+              <!-- Pick & Deliver Form -->
+              <div id="pickDeliverForm" style="display: none">
+                <div style="margin-bottom: 20px">
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      font-weight: 600;
+                      color: #999;
+                      margin-bottom: 8px;
+                      text-transform: uppercase;
+                    "
+                  >
+                    Items to Pick Up
+                  </label>
+                  <div id="pickupItemsContainer"></div>
+                  <button
+                    type="button"
+                    id="addPickupItemBtn"
+                    class="btn-add-item"
+                  >
+                    <i class="fa-solid fa-plus"></i> Add Item
+                  </button>
+                </div>
+
+                <div
+                  style="
+                    margin-bottom: 20px;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid #eee;
+                  "
+                >
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      font-weight: 600;
+                      color: #999;
+                      margin-bottom: 12px;
+                      text-transform: uppercase;
+                    "
+                  >
+                    Pickup Location
+                  </label>
+                  <input
+                    type="text"
+                    id="pickupLocation"
+                    placeholder="E.g., SM Mall Building, Office address..."
+                    class="form-input"
+                  />
+                  <small style="color: #999; display: block; margin-top: 6px"
+                    >Where should the rider pick up the items?</small
+                  >
+                </div>
+
+                <div>
+                  <label
+                    style="
+                      display: block;
+                      font-size: 12px;
+                      font-weight: 600;
+                      color: #999;
+                      margin-bottom: 12px;
+                      text-transform: uppercase;
+                    "
+                  >
+                    Delivery Option
+                  </label>
+
+                  <div class="delivery-option-group">
+                    <label class="delivery-option">
+                      <input
+                        type="radio"
+                        name="deliveryOption"
+                        value="current-location"
+                        checked
+                      />
+                      <span class="option-content">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <div>
+                          <strong>Deliver to me</strong>
+                          <small id="currentLocationDisplay"
+                            >Current location</small
+                          >
+                        </div>
+                      </span>
+                    </label>
+
+                    <label class="delivery-option">
+                      <input
+                        type="radio"
+                        name="deliveryOption"
+                        value="custom-address"
+                      />
+                      <span class="option-content">
+                        <i class="fa-solid fa-map-pin"></i>
+                        <div>
+                          <strong>Deliver to address</strong>
+                          <small>Enter custom location</small>
+                        </div>
+                      </span>
+                    </label>
+                  </div>
+
+                  <input
+                    type="text"
+                    id="deliveryAddress"
+                    placeholder="Enter delivery address..."
+                    class="form-input"
+                    style="display: none; margin-top: 12px"
+                  />
+                </div>
+              </div>
+
+              <!-- Textarea for other services -->
+              <textarea
+                id="itemsList"
+                placeholder="E.g., 2kg rice, 1L milk, 5 eggs, tomatoes..."
+                rows="5"
+              ></textarea>
+              <small id="itemsHelper">List all items you need</small>
+            </div>
+
+            <div id="budgetSection" style="display: none">
+              <div class="form-group">
+                <label>Budget Limit (PHP)</label>
+                <input
+                  type="number"
+                  id="budgetLimit"
+                  placeholder="Enter maximum amount"
+                  min="0"
+                />
+                <small>Optional - rider will try to stay within this</small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Special Instructions</label>
+              <textarea
+                id="instructions"
+                placeholder="Brand preferences, quality notes, etc."
+                rows="3"
+              ></textarea>
+            </div>
+
+            <div class="form-buttons">
+              <button class="btn-secondary" id="step2Back">Back</button>
+              <button class="btn-primary" id="step2Next">Continue</button>
+            </div>
+          </div>
+
+          <!-- STEP 3: CONFIRMATION -->
+          <div class="form-step" id="step3">
+            <h3>Confirm Your Request</h3>
+
+            <div class="confirmation-card">
+              <div class="conf-item">
+                <span class="label">Service Type:</span>
+                <span class="value" id="confService">-</span>
+              </div>
+              <div class="conf-item" id="confVehicleItem" style="display: none">
+                <span class="label">Vehicle:</span>
+                <span class="value" id="confVehicle">-</span>
+              </div>
+              <div class="conf-item">
+                <span class="label">Items:</span>
+                <span class="value" id="confItems">-</span>
+              </div>
+              <div class="conf-item">
+                <span class="label">Budget:</span>
+                <span class="value" id="confBudget">-</span>
+              </div>
+              <div class="conf-item">
+                <span class="label">Pickup/Delivery:</span>
+                <span class="value" id="confLocation">-</span>
+              </div>
+            </div>
+
+            <div class="payment-note">
+              <i class="fa-solid fa-info-circle"></i>
+              <span
+                >You'll confirm payment with the rider when they complete the
+                task</span
+              >
+            </div>
+
+            <div class="form-buttons">
+              <button class="btn-secondary" id="step3Back">Back</button>
+              <button class="btn-primary" id="submitRequest">
+                Find a Rider
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAITING FOR RIDER MODAL -->
+    <div
+      class="waiting-modal-overlay"
+      id="waitingModalOverlay"
+      style="display: none"
+    >
+      <div class="waiting-modal" id="waitingModal">
+        <button class="modal-close" id="closeWaitingBtn">
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+
+        <div class="waiting-content">
+          <div class="pulse-animation">
+            <i class="fa-solid fa-motorcycle"></i>
+          </div>
+          <h3>Finding a rider...</h3>
+          <p id="waitingStatus">Looking for available riders near you</p>
+
+          <div class="waiting-timer">
+            <span id="waitingTime">0:00</span>
+          </div>
+
+          <button class="btn-secondary" id="cancelRequestBtn">
+            Cancel Request
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT/TASK MODAL (opens after rider accepts) -->
+    <div class="chat-modal-overlay" id="chatModalOverlay" style="display: none">
+      <div class="chat-modal" id="chatModal">
+        <!-- Header with Rider Info -->
+        <div class="chat-header">
+          <button class="modal-close" id="closeChatBtn">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="rider-info-chat">
+            <div class="rider-avatar">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div>
+              <h4 id="riderName">Rider Name</h4>
+              <span id="riderStatus" class="status-badge">On the way</span>
+            </div>
+          </div>
+          <button class="btn-icon" id="riderCallBtn">
+            <i class="fa-solid fa-phone"></i>
+          </button>
+        </div>
+
+        <!-- Task Progress -->
+        <div class="task-progress-section">
+          <div class="progress-step">
+            <div class="progress-circle completed">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <span>Request Accepted</span>
+          </div>
+          <div class="progress-step">
+            <div class="progress-circle active" id="progressStep2">
+              <span>2</span>
+            </div>
+            <span id="step2Label">Shopping</span>
+          </div>
+          <div class="progress-step">
+            <div class="progress-circle" id="progressStep3">
+              <span>3</span>
+            </div>
+            <span>Delivering</span>
+          </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-container" id="chatContainer">
+          <div class="message-group system">
+            <div class="message-bubble system">
+              Rider <strong id="chatRiderName">accepted</strong> your request
+            </div>
+          </div>
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-input-section">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type a message..."
+            class="message-input"
+          />
+          <button class="btn-send" id="sendMessageBtn">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERLAY BACKDROP - ONE ONLY -->
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+
+    <!-- END OF MODAL SECTIONS -->
     <!-- Leaflet JS -->
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -258,6 +723,7 @@
 
     <!-- Map Controller -->
     <script src="../js/map.js"></script>
+    <script src="../js/request-modal.js"></script>
 
     <!-- Logout handler -->
     <script>
