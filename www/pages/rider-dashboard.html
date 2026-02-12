@@ -11,7 +11,7 @@
     />
     <style>
       .rider-dashboard {
-        padding: 30px;
+        padding: 20px;
         max-width: 500px;
         margin: 0 auto;
       }
@@ -19,38 +19,31 @@
       .status-card {
         background: white;
         border-radius: 20px;
-        padding: 25px;
-        margin-bottom: 20px;
+        padding: 20px;
+        margin-bottom: 15px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       }
 
       .status-card h2 {
-        font-size: 20px;
+        font-size: 18px;
         margin-bottom: 15px;
         color: var(--primary-black);
-      }
-
-      .status-indicator {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 15px;
-        background: #f3f4f6;
-        border-radius: 15px;
-        font-size: 14px;
-        font-weight: 600;
       }
 
-      .location-info {
-        margin-top: 15px;
-        padding: 15px;
-        background: #fff9db;
-        border-radius: 15px;
-        font-size: 13px;
-      }
-
-      .location-info p {
-        margin: 5px 0;
+      .notification-badge {
+        background: #dc3545;
+        color: white;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 12px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
       }
 
       .logout-btn {
@@ -71,15 +64,12 @@
         align-items: center;
         justify-content: center;
         gap: 10px;
+        margin-top: 20px;
       }
 
       .logout-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
-      }
-
-      .logout-btn:active {
-        transform: translateY(0);
       }
     </style>
   </head>
@@ -87,57 +77,50 @@
     <div class="page-wrapper">
       <div class="top-header">
         <div class="nav-bar">
-          <a href="#" class="nav-back">
-            <i class="fa-solid fa-arrow-left"></i>
-          </a>
-          <h1 style="font-size: 20px; margin: 0">Rider Dashboard</h1>
-          <a href="#" class="nav-action-link">Menu</a>
+          <h1 style="font-size: 20px; margin: 0">
+            <i class="fa-solid fa-motorcycle"></i> Rider Dashboard
+          </h1>
         </div>
       </div>
 
       <div class="main-container">
         <div class="rider-dashboard">
+          <!-- Incoming Requests Section -->
+          <div class="status-card">
+            <h2>
+              <i class="fa-solid fa-bell"></i>
+              Incoming Requests
+              <span class="notification-badge" id="requestNotificationBadge"
+                >0</span
+              >
+            </h2>
+            <div id="requestsContainer">
+              <div style="text-align: center; padding: 40px 20px; color: #999">
+                <i
+                  class="fa-solid fa-spinner fa-spin"
+                  style="font-size: 48px; margin-bottom: 15px; display: block"
+                ></i>
+                <p style="font-size: 14px">Checking for requests...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location Status Section -->
           <div class="status-card">
             <h2><i class="fa-solid fa-location-dot"></i> Location Status</h2>
-            <div class="status-indicator" id="locationStatus">
+            <div
+              id="locationStatus"
+              style="
+                padding: 15px;
+                background: #f3f4f6;
+                border-radius: 15px;
+                font-size: 14px;
+                font-weight: 600;
+              "
+            >
               <i class="fa-solid fa-circle" style="color: #666"></i>
               Starting location tracking...
             </div>
-
-            <div class="location-info" id="locationInfo" style="display: none">
-              <p><strong>Latitude:</strong> <span id="currentLat">-</span></p>
-              <p><strong>Longitude:</strong> <span id="currentLng">-</span></p>
-              <p>
-                <strong>Accuracy:</strong> <span id="currentAccuracy">-</span>m
-              </p>
-              <p>
-                <strong>Last Update:</strong> <span id="lastUpdate">-</span>
-              </p>
-            </div>
-          </div>
-
-          <div class="status-card">
-            <h2><i class="fa-solid fa-motorcycle"></i> Rider Information</h2>
-            <p style="color: var(--text-light); font-size: 14px">
-              Your location is being shared with customers in real-time. Make
-              sure your location services are enabled for the best experience.
-            </p>
-          </div>
-
-          <div class="status-card">
-            <h2><i class="fa-solid fa-info-circle"></i> Tips</h2>
-            <ul
-              style="
-                padding-left: 20px;
-                color: var(--text-light);
-                font-size: 13px;
-              "
-            >
-              <li>Keep your phone's GPS enabled</li>
-              <li>Location updates every 5 seconds</li>
-              <li>Customers can see you within 10km radius</li>
-              <li>Set your availability status in Settings</li>
-            </ul>
           </div>
 
           <!-- Logout Button -->
@@ -152,36 +135,14 @@
     <!-- Auth Module -->
     <script src="../js/auth.js"></script>
 
+    <!-- API Handler -->
+    <script src="../js/api_request.js"></script>
+
     <!-- Rider Location Tracker Script -->
     <script src="../js/rider-map.js"></script>
 
-    <!-- Display location info -->
-    <script>
-      // Override the tracker to display location info
-      document.addEventListener("DOMContentLoaded", function () {
-        const originalUpdateMethod =
-          RiderLocationTracker.prototype.updateLocationToBackend;
-
-        RiderLocationTracker.prototype.updateLocationToBackend =
-          async function () {
-            // Call original method
-            await originalUpdateMethod.call(this);
-
-            // Update UI with current location
-            if (this.currentPosition) {
-              document.getElementById("locationInfo").style.display = "block";
-              document.getElementById("currentLat").textContent =
-                this.currentPosition.latitude.toFixed(6);
-              document.getElementById("currentLng").textContent =
-                this.currentPosition.longitude.toFixed(6);
-              document.getElementById("currentAccuracy").textContent =
-                this.currentPosition.accuracy.toFixed(2);
-              document.getElementById("lastUpdate").textContent =
-                new Date().toLocaleTimeString();
-            }
-          };
-      });
-    </script>
+    <!-- NEW: Rider Request Handler -->
+    <script src="../js/rider-requests.js"></script>
 
     <!-- Logout handler -->
     <script>
@@ -192,22 +153,25 @@
           logoutBtn.addEventListener("click", (e) => {
             e.preventDefault();
 
-            // Confirm logout
             if (
               confirm(
                 "Are you sure you want to logout? Location tracking will be stopped.",
               )
             ) {
-              // Stop location tracking if active
+              // Stop location tracking
               if (window.riderTracker) {
-                window.riderTracker.stopTracking();
+                riderTracker.stop();
               }
 
-              // Use the auth module's logout function
+              // Stop request polling
+              if (window.riderRequestHandler) {
+                riderRequestHandler.stop();
+              }
+
+              // Logout
               if (window.auth && window.auth.logout) {
                 window.auth.logout();
               } else {
-                // Fallback: manual logout
                 localStorage.clear();
                 sessionStorage.clear();
                 window.location.href = "login.html";

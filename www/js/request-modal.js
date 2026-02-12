@@ -1,8 +1,5 @@
-// request-modal.js - UPDATED VERSION
+// request-modal.js - COMPLETE VERSION WITH REAL RIDER MATCHING
 // Uses api_request.js for all backend API calls
-// Add this AFTER api_request.js in your HTML
-
-// NOTE: Make sure api_request.js is loaded BEFORE this file!
 
 class RequestModalController {
   constructor() {
@@ -28,6 +25,7 @@ class RequestModalController {
     this.isWaiting = false;
     this.waitingTimer = 0;
     this.waitingTimerId = null;
+    this.statusPollInterval = null;
     this.requestId = null;
 
     // Check if API is available
@@ -445,7 +443,6 @@ class RequestModalController {
     }
 
     this.isWaiting = true;
-    this.startWaitingTimer();
   }
 
   closeWaitingModal() {
@@ -1066,7 +1063,7 @@ class RequestModalController {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   }
 
-  // ===== FORM SUBMISSION - NOW USES API =====
+  // ===== FORM SUBMISSION - REAL RIDER MATCHING =====
 
   async submitNewRequest() {
     console.log("🚀 Submitting request:", this.formData);
@@ -1081,7 +1078,7 @@ class RequestModalController {
     // Add loading state
     this.submitRequest.disabled = true;
     this.submitRequest.innerHTML =
-      '<i class="fa-solid fa-spinner"></i> Submitting...';
+      '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
 
     try {
       // Update API token
@@ -1110,20 +1107,325 @@ class RequestModalController {
       this.requestId = result.data.request_id;
       console.log("✅ Request created with ID:", this.requestId);
 
-      // Close form and show waiting modal
+      // Close form modal
       this.requestModalOverlay.style.display = "none";
-      this.openWaitingModal();
 
-      // Simulate rider acceptance after 5 seconds
-      setTimeout(() => {
-        this.simulateRiderAcceptance();
-      }, 5000);
+      // Show rider selection instead of fake waiting
+      this.showRiderSelection();
     } catch (error) {
       console.error("❌ Submit error:", error);
       alert("Failed to create request: " + error.message);
     } finally {
       this.submitRequest.disabled = false;
       this.submitRequest.innerHTML = "Find a Rider";
+    }
+  }
+
+  // NEW METHOD: Show rider selection modal
+  async showRiderSelection() {
+    console.log("👥 Showing rider selection...");
+
+    // Show waiting modal with different message
+    this.waitingModalOverlay.style.display = "flex";
+    this.waitingStatus.textContent = "Finding available riders nearby...";
+
+    if (this.modalBackdrop) {
+      this.modalBackdrop.classList.add("active");
+    }
+
+    // Get user's location from map
+    const userPosition = pasugoMap ? pasugoMap.userPosition : null;
+
+    if (!userPosition) {
+      alert("Unable to get your location. Please try again.");
+      this.closeWaitingModal();
+      return;
+    }
+
+    try {
+      // Fetch nearby riders using existing API
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(
+        `https://pasugo.onrender.com/api/locations/riders/available?lat=${userPosition.lat}&lng=${userPosition.lng}&radius=10&limit=5`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch riders");
+      }
+
+      const data = await response.json();
+
+      if (!data.riders || data.riders.length === 0) {
+        this.waitingStatus.innerHTML = `
+          <p style="color: #dc3545;">No riders available nearby</p>
+          <p style="font-size: 12px; margin-top: 10px;">Please try again in a few moments</p>
+        `;
+        setTimeout(() => {
+          this.closeWaitingModal();
+        }, 3000);
+        return;
+      }
+
+      // Display rider list
+      this.displayRiderList(data.riders);
+    } catch (error) {
+      console.error("❌ Error fetching riders:", error);
+      alert("Failed to find riders. Please try again.");
+      this.closeWaitingModal();
+    }
+  }
+
+  // NEW METHOD: Display list of available riders
+  displayRiderList(riders) {
+    const waitingContent = this.waitingModal.querySelector(".waiting-content");
+
+    waitingContent.innerHTML = `
+      <h3 style="margin-bottom: 20px;">Select a Rider</h3>
+      <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
+        ${riders.length} rider${riders.length > 1 ? "s" : ""} available nearby
+      </p>
+      
+      <div class="rider-list" style="max-height: 400px; overflow-y: auto;">
+        ${riders
+          .map(
+            (rider) => `
+          <div class="rider-card" data-rider-id="${rider.rider_id}" style="
+            background: white;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+          ">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <div style="
+                width: 50px;
+                height: 50px;
+                background: #ffc107;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+              ">
+                <i class="fa-solid fa-motorcycle"></i>
+              </div>
+              <div style="flex-grow: 1;">
+                <h4 style="margin: 0; font-size: 16px;">${rider.full_name}</h4>
+                <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                  ${rider.vehicle_type} - ${rider.license_plate}
+                </p>
+                <p style="margin: 0; font-size: 12px;">
+                  ⭐ ${rider.rating ? rider.rating.toFixed(1) : "New"} 
+                  (${rider.total_tasks_completed} rides) • 
+                  <strong>${rider.distance_km ? rider.distance_km.toFixed(1) : "0.0"}km away</strong>
+                </p>
+              </div>
+              <i class="fa-solid fa-chevron-right" style="color: #ccc;"></i>
+            </div>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+      
+      <button class="btn-secondary" id="cancelRiderSelection" style="margin-top: 20px;">
+        Cancel
+      </button>
+    `;
+
+    // Add click handlers for rider cards
+    const riderCards = waitingContent.querySelectorAll(".rider-card");
+    riderCards.forEach((card) => {
+      card.addEventListener("click", () => {
+        const riderId = parseInt(card.dataset.riderId);
+        this.selectRiderById(
+          riderId,
+          riders.find((r) => r.rider_id === riderId),
+        );
+      });
+
+      // Hover effect
+      card.addEventListener("mouseenter", () => {
+        card.style.borderColor = "#ffc107";
+        card.style.transform = "scale(1.02)";
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.borderColor = "#eee";
+        card.style.transform = "scale(1)";
+      });
+    });
+
+    // Cancel button
+    const cancelBtn = waitingContent.querySelector("#cancelRiderSelection");
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", async () => {
+        // Cancel the request
+        await pasugoAPI.cancelRequest(this.requestId);
+        this.closeWaitingModal();
+        this.resetForm();
+      });
+    }
+  }
+
+  // NEW METHOD: Customer selects a specific rider
+  async selectRiderById(riderId, riderData) {
+    console.log(`👤 Customer selected rider ${riderId}`);
+
+    const waitingContent = this.waitingModal.querySelector(".waiting-content");
+
+    waitingContent.innerHTML = `
+      <div class="pulse-animation">
+        <i class="fa-solid fa-motorcycle"></i>
+      </div>
+      <h3>Notifying ${riderData.full_name}...</h3>
+      <p style="font-size: 13px; color: #666; margin-top: 10px;">
+        Waiting for rider to accept your request
+      </p>
+      <div class="waiting-timer" style="margin-top: 20px;">
+        <span id="waitingTime">0:00</span>
+      </div>
+    `;
+
+    try {
+      // Send selection to backend
+      const result = await pasugoAPI.selectRider(this.requestId, riderId);
+
+      if (!result.success) {
+        alert("Failed to select rider: " + result.message);
+        this.closeWaitingModal();
+        return;
+      }
+
+      console.log("✅ Rider notified:", result.data);
+
+      // Start polling for rider response
+      this.startPollingForRiderResponse();
+    } catch (error) {
+      console.error("❌ Error selecting rider:", error);
+      alert("Failed to notify rider");
+      this.closeWaitingModal();
+    }
+  }
+
+  // NEW METHOD: Poll request status waiting for rider to accept
+  startPollingForRiderResponse() {
+    this.isWaiting = true;
+    this.waitingTimer = 0;
+
+    // Update timer display
+    this.waitingTimerId = setInterval(() => {
+      this.waitingTimer++;
+      const minutes = Math.floor(this.waitingTimer / 60);
+      const seconds = this.waitingTimer % 60;
+      const timeEl = document.getElementById("waitingTime");
+      if (timeEl) {
+        timeEl.textContent = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+      }
+
+      // Timeout after 10 minutes (600 seconds)
+      if (this.waitingTimer >= 600) {
+        this.handleRiderTimeout();
+      }
+    }, 1000);
+
+    // Poll status every 3 seconds
+    this.statusPollInterval = setInterval(async () => {
+      const result = await pasugoAPI.pollRequestStatus(this.requestId);
+
+      if (result.success) {
+        const { status, timed_out, rider_info } = result.data;
+
+        // Check if timed out
+        if (timed_out) {
+          this.handleRiderTimeout();
+          return;
+        }
+
+        // Check if rider accepted
+        if (status === "assigned" && rider_info) {
+          this.handleRiderAccepted(rider_info);
+          return;
+        }
+
+        // Check if rider declined (status still pending but no selected_rider_id)
+        if (status === "pending" && !result.data.selected_rider_id) {
+          this.handleRiderDeclined();
+          return;
+        }
+      }
+    }, 3000);
+  }
+
+  // NEW METHOD: Handle rider timeout
+  handleRiderTimeout() {
+    this.stopWaitingTimer();
+    this.stopStatusPolling();
+
+    const waitingContent = this.waitingModal.querySelector(".waiting-content");
+    waitingContent.innerHTML = `
+      <i class="fa-solid fa-clock" style="font-size: 60px; color: #dc3545; margin-bottom: 20px;"></i>
+      <h3>Rider didn't respond</h3>
+      <p style="font-size: 13px; color: #666; margin: 15px 0;">
+        The rider didn't accept within 10 minutes
+      </p>
+      <button class="btn-primary" id="selectAnotherRider">
+        Select Another Rider
+      </button>
+    `;
+
+    const btn = waitingContent.querySelector("#selectAnotherRider");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        this.showRiderSelection();
+      });
+    }
+  }
+
+  // NEW METHOD: Handle rider declined
+  handleRiderDeclined() {
+    this.stopWaitingTimer();
+    this.stopStatusPolling();
+
+    const waitingContent = this.waitingModal.querySelector(".waiting-content");
+    waitingContent.innerHTML = `
+      <i class="fa-solid fa-circle-xmark" style="font-size: 60px; color: #dc3545; margin-bottom: 20px;"></i>
+      <h3>Rider Declined</h3>
+      <p style="font-size: 13px; color: #666; margin: 15px 0;">
+        The rider is not available for this request
+      </p>
+      <button class="btn-primary" id="selectAnotherRider">
+        Select Another Rider
+      </button>
+    `;
+
+    const btn = waitingContent.querySelector("#selectAnotherRider");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        this.showRiderSelection();
+      });
+    }
+  }
+
+  // NEW METHOD: Handle rider accepted
+  handleRiderAccepted(riderInfo) {
+    console.log("🎉 Rider accepted!", riderInfo);
+
+    this.stopWaitingTimer();
+    this.stopStatusPolling();
+
+    this.showChatWithRider(riderInfo);
+  }
+
+  // NEW METHOD: Stop status polling
+  stopStatusPolling() {
+    if (this.statusPollInterval) {
+      clearInterval(this.statusPollInterval);
+      this.statusPollInterval = null;
     }
   }
 
@@ -1188,28 +1490,12 @@ class RequestModalController {
 
   // ===== WAITING MODAL =====
 
-  startWaitingTimer() {
-    this.waitingTimer = 0;
-    this.waitingTimerId = setInterval(() => {
-      this.waitingTimer++;
-      const minutes = Math.floor(this.waitingTimer / 60);
-      const seconds = this.waitingTimer % 60;
-      this.waitingTime.textContent = `${minutes}:${seconds
-        .toString()
-        .padStart(2, "0")}`;
-
-      if (this.waitingTimer >= 300) {
-        this.stopWaitingTimer();
-        this.cancelRequest();
-      }
-    }, 1000);
-  }
-
   stopWaitingTimer() {
     if (this.waitingTimerId) {
       clearInterval(this.waitingTimerId);
       this.waitingTimerId = null;
     }
+    this.stopStatusPolling();
   }
 
   async cancelRequest() {
@@ -1237,22 +1523,6 @@ class RequestModalController {
     }
   }
 
-  simulateRiderAcceptance() {
-    if (this.isWaiting) {
-      console.log("🎉 Rider accepted request!");
-      this.stopWaitingTimer();
-
-      const riderData = {
-        id: 1,
-        name: "Juan Dela Cruz",
-        vehicle: "Honda Motorcycle",
-        rating: 4.8,
-      };
-
-      this.showChatWithRider(riderData);
-    }
-  }
-
   // ===== CHAT MODAL =====
 
   showChatWithRider(rider) {
@@ -1276,7 +1546,7 @@ class RequestModalController {
 
     setTimeout(() => {
       this.addRiderMessage(
-        `Hi! I'll help you with ${this.formData.serviceType}. Let me get started right away! 👍`,
+        `Hi! I'll help you with your ${this.formData.serviceType} request. Let me get started! 👍`,
       );
     }, 500);
   }

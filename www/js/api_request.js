@@ -340,6 +340,161 @@ class PasugoAPI {
     }
   }
 
+  // ===== RIDER SELECTION & NOTIFICATION =====
+
+  /**
+   * Customer selects a specific rider for their request
+   * @param {number} requestId
+   * @param {number} riderId
+   * @returns {Promise<Object>}
+   */
+  async selectRider(requestId, riderId) {
+    try {
+      console.log(`👤 Selecting rider ${riderId} for request ${requestId}`);
+
+      this.updateToken();
+
+      if (!this.token) {
+        throw new Error("Not authenticated. Please login first.");
+      }
+
+      const response = await fetch(
+        `${this.baseURL}/requests/${requestId}/select-rider?rider_id=${riderId}`,
+        {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to select rider");
+      }
+
+      console.log("✅ Rider selected:", data);
+      return {
+        success: true,
+        message: data.message,
+        data: data.data,
+      };
+    } catch (error) {
+      return this.handleError(error, "selectRider");
+    }
+  }
+
+  /**
+   * Poll request status (lightweight check for customer)
+   * @param {number} requestId
+   * @returns {Promise<Object>}
+   */
+  async pollRequestStatus(requestId) {
+    try {
+      this.updateToken();
+
+      if (!this.token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(
+        `${this.baseURL}/requests/${requestId}/status-poll`,
+        {
+          method: "GET",
+          headers: this.getAuthHeaders(),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to poll status");
+      }
+
+      return {
+        success: true,
+        data: data.data,
+      };
+    } catch (error) {
+      return this.handleError(error, "pollRequestStatus");
+    }
+  }
+
+  /**
+   * Get pending requests for current rider (RIDER ONLY)
+   * @returns {Promise<Object>}
+   */
+  async getPendingRequestsForMe() {
+    try {
+      console.log("📋 Fetching pending requests for me...");
+
+      this.updateToken();
+
+      if (!this.token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(`${this.baseURL}/requests/pending-for-me`, {
+        method: "GET",
+        headers: this.getAuthHeaders(),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to fetch pending requests");
+      }
+
+      console.log(`✅ Found ${data.data.length} pending requests`);
+      return {
+        success: true,
+        message: data.message,
+        data: data.data,
+      };
+    } catch (error) {
+      return this.handleError(error, "getPendingRequestsForMe");
+    }
+  }
+
+  /**
+   * Decline a request (RIDER ONLY)
+   * @param {number} requestId
+   * @returns {Promise<Object>}
+   */
+  async declineRequest(requestId) {
+    try {
+      console.log(`❌ Declining request ${requestId}`);
+
+      this.updateToken();
+
+      if (!this.token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(
+        `${this.baseURL}/requests/${requestId}/decline`,
+        {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to decline request");
+      }
+
+      console.log("✅ Request declined");
+      return {
+        success: true,
+        message: data.message,
+        data: data.data,
+      };
+    } catch (error) {
+      return this.handleError(error, "declineRequest");
+    }
+  }
+
   // ===== FILE UPLOADS =====
 
   /**
