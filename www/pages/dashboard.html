@@ -721,8 +721,13 @@
     <!-- Auth Module (must load before map.js) -->
     <script src="../js/auth.js"></script>
 
+    <!-- ✅ API REQUEST HANDLER (LOAD FIRST!) -->
+    <script src="../js/api_request.js"></script>
+
     <!-- Map Controller -->
     <script src="../js/map.js"></script>
+
+    <!-- ✅ REQUEST MODAL (uses api_request.js) -->
     <script src="../js/request-modal.js"></script>
 
     <!-- Logout handler -->
@@ -734,13 +739,10 @@
           logoutBtn.addEventListener("click", (e) => {
             e.preventDefault();
 
-            // Confirm logout
             if (confirm("Are you sure you want to logout?")) {
-              // Use the auth module's logout function
               if (window.auth && window.auth.logout) {
                 window.auth.logout();
               } else {
-                // Fallback: manual logout
                 localStorage.clear();
                 sessionStorage.clear();
                 window.location.href = "login.html";

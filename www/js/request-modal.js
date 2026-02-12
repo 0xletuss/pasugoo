@@ -1,6 +1,8 @@
-// request-modal.js - Pasugo Request Modal Controller (WITH FILE UPLOAD)
-// Handles animations, form steps, and modal transitions
-// FIXED: Only initializes once, listens to navbar plus button only
+// request-modal.js - UPDATED VERSION
+// Uses api_request.js for all backend API calls
+// Add this AFTER api_request.js in your HTML
+
+// NOTE: Make sure api_request.js is loaded BEFORE this file!
 
 class RequestModalController {
   constructor() {
@@ -12,7 +14,7 @@ class RequestModalController {
       serviceType: null,
       vehicleType: null,
       billPhotos: [],
-      attachedFiles: [], // NEW: General file attachments
+      attachedFiles: [],
       pickupItems: [],
       pickupLocation: "",
       deliveryOption: "current-location",
@@ -28,7 +30,13 @@ class RequestModalController {
     this.waitingTimerId = null;
     this.requestId = null;
 
-    // Try to initialize
+    // Check if API is available
+    if (typeof pasugoAPI === "undefined") {
+      console.error(
+        "❌ pasugoAPI not found! Make sure api_request.js is loaded BEFORE request-modal.js",
+      );
+    }
+
     this.init();
   }
 
@@ -96,7 +104,7 @@ class RequestModalController {
         "photoPreviewContainer",
       );
 
-      // NEW: General file upload section
+      // General file upload section
       this.fileUploadSection = document.getElementById("fileUploadSection");
       this.fileUploadArea = document.getElementById("fileUploadArea");
       this.generalFileInput = document.getElementById("generalFileInput");
@@ -152,20 +160,20 @@ class RequestModalController {
       this.confBudget = document.getElementById("confBudget");
       this.confLocation = document.getElementById("confLocation");
 
-      // Waiting Modal (get FIRST occurrence only)
+      // Waiting Modal
       const waitingOverlays = document.querySelectorAll(
         ".waiting-modal-overlay",
       );
-      this.waitingModalOverlay = waitingOverlays[0]; // First one only
+      this.waitingModalOverlay = waitingOverlays[0];
       this.waitingModal = document.getElementById("waitingModal");
       this.closeWaitingBtn = document.getElementById("closeWaitingBtn");
       this.cancelRequestBtn = document.getElementById("cancelRequestBtn");
       this.waitingStatus = document.getElementById("waitingStatus");
       this.waitingTime = document.getElementById("waitingTime");
 
-      // Chat Modal (get FIRST occurrence only)
+      // Chat Modal
       const chatOverlays = document.querySelectorAll(".chat-modal-overlay");
-      this.chatModalOverlay = chatOverlays[0]; // First one only
+      this.chatModalOverlay = chatOverlays[0];
       this.chatModal = document.getElementById("chatModal");
       this.closeChatBtn = document.getElementById("closeChatBtn");
       this.messageInput = document.getElementById("messageInput");
@@ -175,9 +183,9 @@ class RequestModalController {
       this.riderStatus = document.getElementById("riderStatus");
       this.riderCallBtn = document.getElementById("riderCallBtn");
 
-      // Backdrop (get FIRST occurrence only)
+      // Backdrop
       const backdrops = document.querySelectorAll(".modal-backdrop");
-      this.modalBackdrop = backdrops[0]; // First one only
+      this.modalBackdrop = backdrops[0];
 
       return true;
     } catch (error) {
@@ -199,37 +207,31 @@ class RequestModalController {
         console.log("🔘 Navbar plus button clicked");
         this.openRequestModal();
       });
-    } else {
-      console.warn("⚠️ .nav-fab element not found");
     }
 
     // Close buttons
     if (this.closeRequestBtn) {
       this.closeRequestBtn.addEventListener("click", () => {
-        console.log("❌ Request modal close button clicked");
         this.closeRequestModal();
       });
     }
 
     if (this.closeWaitingBtn) {
       this.closeWaitingBtn.addEventListener("click", () => {
-        console.log("❌ Waiting modal close button clicked");
         this.closeWaitingModal();
       });
     }
 
     if (this.closeChatBtn) {
       this.closeChatBtn.addEventListener("click", () => {
-        console.log("❌ Chat modal close button clicked");
         this.closeChatModal();
       });
     }
 
-    // Backdrop click - only close if not waiting
+    // Backdrop click
     if (this.modalBackdrop) {
       this.modalBackdrop.addEventListener("click", () => {
         if (!this.isWaiting) {
-          console.log("🎯 Backdrop clicked - closing modal");
           this.closeRequestModal();
         }
       });
@@ -277,7 +279,7 @@ class RequestModalController {
       });
     }
 
-    // NEW: General file upload
+    // General file upload
     if (this.fileUploadArea) {
       this.fileUploadArea.addEventListener("click", () => {
         this.generalFileInput.click();
@@ -313,7 +315,7 @@ class RequestModalController {
       });
     }
 
-    // Add pickup item button for pick & deliver
+    // Add pickup item button
     if (this.addPickupItemBtn) {
       this.addPickupItemBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -325,7 +327,6 @@ class RequestModalController {
     this.deliveryRadioButtons.forEach((radio) => {
       radio.addEventListener("change", (e) => {
         this.formData.deliveryOption = e.target.value;
-        console.log(`📦 Delivery option: ${this.formData.deliveryOption}`);
 
         if (e.target.value === "custom-address") {
           this.deliveryAddressInput.style.display = "block";
@@ -404,7 +405,6 @@ class RequestModalController {
 
     this.resetForm();
 
-    // Trigger animation
     setTimeout(() => {
       if (this.requestModalOverlay) {
         this.requestModalOverlay.style.animation = "slideInUp 0.4s ease";
@@ -512,25 +512,19 @@ class RequestModalController {
   goToStep(stepNumber) {
     console.log(`📄 Going to step ${stepNumber}`);
 
-    // Hide current step
     this.formSteps[this.currentStep].classList.remove("active");
-
-    // Update step indicator
     this.stepIndicators[this.currentStep].classList.remove("active");
     if (stepNumber > this.currentStep) {
       this.stepIndicators[this.currentStep].classList.add("completed");
     }
 
-    // Show new step
     this.currentStep = stepNumber;
     this.formSteps[stepNumber].classList.add("active");
     this.stepIndicators[stepNumber].classList.add("active");
 
-    // Update title
     const titles = ["", "Select Service", "Add Details", "Confirm Request"];
     this.formTitle.textContent = titles[stepNumber];
 
-    // Scroll to top
     if (this.requestModal) {
       this.requestModal.scrollTop = 0;
     }
@@ -548,7 +542,6 @@ class RequestModalController {
         return true;
 
       case 2:
-        // Check if vehicle is required (for pickup service)
         if (
           this.formData.serviceType === "pickup" &&
           !this.formData.vehicleType
@@ -557,7 +550,6 @@ class RequestModalController {
           return false;
         }
 
-        // Check if bill photos uploaded (for bills service)
         if (
           this.formData.serviceType === "bills" &&
           this.formData.billPhotos.length === 0
@@ -566,22 +558,18 @@ class RequestModalController {
           return false;
         }
 
-        // Check Pick & Deliver validation
         if (this.formData.serviceType === "delivery") {
-          // Get pickup items
           const pickupItems = this.getPickupItems();
           if (!pickupItems.trim()) {
             alert("Please add at least one item to pick up");
             return false;
           }
 
-          // Check pickup location
           if (!this.pickupLocation.value.trim()) {
             alert("Please enter the pickup location");
             return false;
           }
 
-          // Check delivery address if custom
           if (this.formData.deliveryOption === "custom-address") {
             if (!this.deliveryAddressInput.value.trim()) {
               alert("Please enter the delivery address");
@@ -591,7 +579,6 @@ class RequestModalController {
               this.deliveryAddressInput.value.trim();
           }
 
-          // Save data
           this.formData.pickupItems = pickupItems;
           this.formData.pickupLocation = this.pickupLocation.value.trim();
           this.formData.items = `Pick from: ${this.formData.pickupLocation} | Items: ${pickupItems}`;
@@ -600,7 +587,6 @@ class RequestModalController {
           return true;
         }
 
-        // Get items based on service type
         let itemsText = "";
         if (this.formData.serviceType === "groceries") {
           itemsText = this.getGroceriesItems();
@@ -632,20 +618,14 @@ class RequestModalController {
   // ===== SERVICE SELECTION =====
 
   selectService(card) {
-    // Remove previous selection
     this.serviceCards.forEach((c) => c.classList.remove("selected"));
-
-    // Add selection to clicked card
     card.classList.add("selected");
 
-    // Store service type
     this.formData.serviceType = card.dataset.service;
     console.log(`✅ Selected service: ${this.formData.serviceType}`);
 
-    // Enable next button
     this.step1Next.disabled = false;
 
-    // Update step 2 title based on service
     const titles = {
       groceries: "What groceries do you need?",
       bills: "Which bills do you need to pay?",
@@ -655,7 +635,6 @@ class RequestModalController {
       documents: "Which documents do you need to process?",
     };
 
-    // Update labels and placeholders based on service
     const labels = {
       groceries: {
         label: "Items List",
@@ -698,10 +677,8 @@ class RequestModalController {
 
     this.step2Title.textContent = titles[this.formData.serviceType];
 
-    // Show/hide vehicle section based on service type
     if (this.formData.serviceType === "pickup") {
       this.vehicleSection.style.display = "block";
-      // Reset vehicle selection when switching services
       this.vehicleCards.forEach((card) => card.classList.remove("selected"));
       this.formData.vehicleType = null;
     } else {
@@ -710,21 +687,17 @@ class RequestModalController {
       this.formData.vehicleType = null;
     }
 
-    // Show/hide bill photo section based on service type
     if (this.formData.serviceType === "bills") {
       this.billPhotoSection.style.display = "block";
-      this.fileUploadSection.style.display = "none"; // Hide general file upload for bills
+      this.fileUploadSection.style.display = "none";
     } else {
       this.billPhotoSection.style.display = "none";
       this.formData.billPhotos = [];
       this.photoPreviewContainer.innerHTML = "";
       this.billPhotoInput.value = "";
-
-      // Show general file upload for all other services
       this.fileUploadSection.style.display = "block";
     }
 
-    // Show/hide budget section (only for groceries)
     if (this.formData.serviceType === "groceries") {
       this.budgetSection.style.display = "block";
       this.groceriesItemsForm.style.display = "block";
@@ -732,12 +705,10 @@ class RequestModalController {
       this.itemsHelper.style.display = "none";
       this.pickDeliverForm.style.display = "none";
 
-      // Initialize with one empty item field if none exist
       if (this.itemsContainer.children.length === 0) {
         this.addItemField();
       }
     } else if (this.formData.serviceType === "delivery") {
-      // Pick & Deliver
       this.budgetSection.style.display = "none";
       this.budgetLimit.value = "";
       this.groceriesItemsForm.style.display = "none";
@@ -745,18 +716,15 @@ class RequestModalController {
       this.itemsList.style.display = "none";
       this.itemsHelper.style.display = "none";
 
-      // Update current location display
       const locationEl = document.getElementById("locationName");
       if (locationEl) {
         this.currentLocationDisplay.textContent = locationEl.textContent;
       }
 
-      // Initialize with one pickup item if none exist
       if (this.pickupItemsContainer.children.length === 0) {
         this.addPickupItemField();
       }
 
-      // Reset delivery option
       this.formData.deliveryOption = "current-location";
       document.querySelector(
         'input[name="deliveryOption"][value="current-location"]',
@@ -774,7 +742,6 @@ class RequestModalController {
       this.pickupItemsContainer.innerHTML = "";
     }
 
-    // Visual feedback
     const title = document.querySelector("#step1 h3");
     if (title) {
       title.style.color = "#28a745";
@@ -784,11 +751,10 @@ class RequestModalController {
     }
   }
 
-  // ===== GROCERIES ITEM FORM =====
+  // ===== ITEM MANAGEMENT =====
 
   addItemField() {
     const itemNumber = this.itemsContainer.children.length + 1;
-
     const itemGroup = document.createElement("div");
     itemGroup.className = "item-input-group";
     itemGroup.innerHTML = `
@@ -802,16 +768,11 @@ class RequestModalController {
       />
       ${
         itemNumber > 1
-          ? `
-        <button type="button" class="item-remove-btn">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      `
+          ? `<button type="button" class="item-remove-btn"><i class="fa-solid fa-trash"></i></button>`
           : ""
       }
     `;
 
-    // Add remove event listener if button exists
     const removeBtn = itemGroup.querySelector(".item-remove-btn");
     if (removeBtn) {
       removeBtn.addEventListener("click", (e) => {
@@ -821,20 +782,15 @@ class RequestModalController {
     }
 
     this.itemsContainer.appendChild(itemGroup);
-
-    // Focus on new input
     itemGroup.querySelector("input").focus();
-
     console.log(`➕ Item field ${itemNumber} added`);
   }
 
   removeItemField(itemGroup) {
     itemGroup.style.animation = "slideOutDown 0.3s ease";
-
     setTimeout(() => {
       itemGroup.remove();
       this.updateItemLabels();
-      console.log("🗑️ Item field removed");
     }, 300);
   }
 
@@ -862,11 +818,8 @@ class RequestModalController {
     return items.join(", ");
   }
 
-  // ===== PICKUP ITEM FORM (for Pick & Deliver) =====
-
   addPickupItemField() {
     const itemNumber = this.pickupItemsContainer.children.length + 1;
-
     const itemGroup = document.createElement("div");
     itemGroup.className = "item-input-group";
     itemGroup.innerHTML = `
@@ -880,16 +833,11 @@ class RequestModalController {
       />
       ${
         itemNumber > 1
-          ? `
-        <button type="button" class="item-remove-btn">
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      `
+          ? `<button type="button" class="item-remove-btn"><i class="fa-solid fa-trash"></i></button>`
           : ""
       }
     `;
 
-    // Add remove event listener if button exists
     const removeBtn = itemGroup.querySelector(".item-remove-btn");
     if (removeBtn) {
       removeBtn.addEventListener("click", (e) => {
@@ -899,20 +847,14 @@ class RequestModalController {
     }
 
     this.pickupItemsContainer.appendChild(itemGroup);
-
-    // Focus on new input
     itemGroup.querySelector("input").focus();
-
-    console.log(`➕ Pickup item field ${itemNumber} added`);
   }
 
   removePickupItemField(itemGroup) {
     itemGroup.style.animation = "slideOutDown 0.3s ease";
-
     setTimeout(() => {
       itemGroup.remove();
       this.updatePickupItemLabels();
-      console.log("🗑️ Pickup item field removed");
     }, 300);
   }
 
@@ -940,43 +882,34 @@ class RequestModalController {
   }
 
   selectVehicle(card) {
-    // Remove previous selection
     this.vehicleCards.forEach((c) => c.classList.remove("selected"));
-
-    // Add selection to clicked card
     card.classList.add("selected");
-
-    // Store vehicle type
     this.formData.vehicleType = card.dataset.vehicle;
     console.log(`🚗 Selected vehicle: ${this.formData.vehicleType}`);
   }
 
-  // ===== PHOTO UPLOAD =====
+  // ===== FILE UPLOADS =====
 
   handlePhotoUpload(files) {
     const maxFiles = 5;
-    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const maxFileSize = 10 * 1024 * 1024;
 
     Array.from(files).forEach((file) => {
-      // Validate file type
       if (!file.type.startsWith("image/")) {
         alert("Please upload image files only");
         return;
       }
 
-      // Validate file size
       if (file.size > maxFileSize) {
         alert("File size must be less than 10MB");
         return;
       }
 
-      // Check max files
       if (this.formData.billPhotos.length >= maxFiles) {
         alert(`Maximum ${maxFiles} photos allowed`);
         return;
       }
 
-      // Read file as data URL
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoData = {
@@ -1024,37 +957,28 @@ class RequestModalController {
   removePhoto(index) {
     console.log(`🗑️ Removing photo at index ${index}`);
     this.formData.billPhotos.splice(index, 1);
-
-    // Rebuild preview
     this.photoPreviewContainer.innerHTML = "";
     this.formData.billPhotos.forEach((photo, i) => {
       this.displayPhotoPreview(photo, i);
     });
-
-    // Reset file input
     this.billPhotoInput.value = "";
   }
 
-  // ===== NEW: GENERAL FILE UPLOAD =====
-
   handleFileUpload(files) {
     const maxFiles = 10;
-    const maxFileSize = 25 * 1024 * 1024; // 25MB per file
+    const maxFileSize = 25 * 1024 * 1024;
 
     Array.from(files).forEach((file) => {
-      // Validate file size
       if (file.size > maxFileSize) {
         alert(`File "${file.name}" is too large. Maximum size is 25MB`);
         return;
       }
 
-      // Check max files
       if (this.formData.attachedFiles.length >= maxFiles) {
         alert(`Maximum ${maxFiles} files allowed`);
         return;
       }
 
-      // Read file as data URL
       const reader = new FileReader();
       reader.onload = (e) => {
         const fileData = {
@@ -1081,8 +1005,6 @@ class RequestModalController {
   displayFilePreview(fileData, index) {
     const previewItem = document.createElement("div");
     previewItem.className = "file-preview-item";
-
-    // Get file icon based on type
     const fileIcon = this.getFileIcon(fileData.type);
     const fileSizeFormatted = this.formatFileSize(fileData.size);
 
@@ -1113,14 +1035,10 @@ class RequestModalController {
   removeFile(index) {
     console.log(`🗑️ Removing file at index ${index}`);
     this.formData.attachedFiles.splice(index, 1);
-
-    // Rebuild preview
     this.filePreviewContainer.innerHTML = "";
     this.formData.attachedFiles.forEach((file, i) => {
       this.displayFilePreview(file, i);
     });
-
-    // Reset file input
     this.generalFileInput.value = "";
   }
 
@@ -1148,15 +1066,13 @@ class RequestModalController {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   }
 
-  // ===== FORM SUBMISSION =====
+  // ===== FORM SUBMISSION - NOW USES API =====
 
   async submitNewRequest() {
     console.log("🚀 Submitting request:", this.formData);
 
-    // Update confirmation display
     this.updateConfirmationDisplay();
 
-    // Validate all data
     if (!this.formData.serviceType || !this.formData.items) {
       alert("Please fill in all required fields");
       return;
@@ -1168,68 +1084,40 @@ class RequestModalController {
       '<i class="fa-solid fa-spinner"></i> Submitting...';
 
     try {
-      // Prepare request payload
-      const token = localStorage.getItem("access_token");
-      const userData = JSON.parse(localStorage.getItem("user_data"));
+      // Update API token
+      pasugoAPI.updateToken();
 
-      if (!token || !userData) {
-        alert("Please login first");
+      // Prepare request data
+      const requestData = {
+        serviceType: this.formData.serviceType,
+        itemsDescription: this.formData.items,
+        budgetLimit: this.formData.budget || null,
+        specialInstructions: this.formData.instructions || null,
+        pickupLocation: this.formData.pickupLocation || null,
+        deliveryAddress: this.formData.deliveryAddress || null,
+        deliveryOption: this.formData.deliveryOption || null,
+      };
+
+      // Call API to create request
+      const result = await pasugoAPI.createRequest(requestData);
+
+      if (!result.success) {
+        alert("Error: " + result.message);
         return;
       }
 
-      const requestPayload = {
-        customer_id: userData.id,
-        service_type: this.formData.serviceType,
-        items_description: this.formData.items,
-        budget_limit: this.formData.budget,
-        special_instructions: this.formData.instructions,
-        status: "pending",
-        created_at: new Date().toISOString(),
-        // Include file info (you can send base64 or upload to server first)
-        attached_files: this.formData.attachedFiles.map((f) => ({
-          name: f.name,
-          type: f.type,
-          size: f.size,
-          // data: f.data // Include if sending directly, or upload separately
-        })),
-        bill_photos: this.formData.billPhotos.map((p) => ({
-          name: p.name,
-          type: p.type,
-          size: p.size,
-          // data: p.data
-        })),
-      };
+      // Get request ID from response
+      this.requestId = result.data.request_id;
+      console.log("✅ Request created with ID:", this.requestId);
 
-      // Send to backend
-      const response = await fetch(
-        "https://pasugo.onrender.com/api/requests/create",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(requestPayload),
-        },
-      );
+      // Close form and show waiting modal
+      this.requestModalOverlay.style.display = "none";
+      this.openWaitingModal();
 
-      if (response.ok) {
-        const data = await response.json();
-        this.requestId = data.request_id;
-        console.log("✅ Request created:", this.requestId);
-
-        // Close form modal and show waiting
-        this.requestModalOverlay.style.display = "none";
-        this.openWaitingModal();
-
-        // Simulate rider acceptance
-        setTimeout(() => {
-          this.simulateRiderAcceptance();
-        }, 5000);
-      } else {
-        const error = await response.json();
-        alert("Error creating request: " + error.message);
-      }
+      // Simulate rider acceptance after 5 seconds
+      setTimeout(() => {
+        this.simulateRiderAcceptance();
+      }, 5000);
     } catch (error) {
       console.error("❌ Submit error:", error);
       alert("Failed to create request: " + error.message);
@@ -1258,7 +1146,6 @@ class RequestModalController {
     this.confService.textContent =
       serviceNames[this.formData.serviceType] || "-";
 
-    // Show/hide vehicle info
     if (this.formData.serviceType === "pickup") {
       this.confVehicleItem.style.display = "flex";
       this.confVehicle.textContent =
@@ -1267,7 +1154,6 @@ class RequestModalController {
       this.confVehicleItem.style.display = "none";
     }
 
-    // Update items display based on service
     let itemsText = "";
     if (this.formData.serviceType === "delivery") {
       itemsText = `From: ${this.formData.pickupLocation} → ${
@@ -1294,7 +1180,6 @@ class RequestModalController {
       ? `₱${this.formData.budget.toFixed(2)}`
       : "No limit";
 
-    // Get current location from map
     const locationEl = document.getElementById("locationName");
     if (locationEl) {
       this.confLocation.textContent = locationEl.textContent;
@@ -1313,7 +1198,6 @@ class RequestModalController {
         .toString()
         .padStart(2, "0")}`;
 
-      // Cancel auto after 5 minutes
       if (this.waitingTimer >= 300) {
         this.stopWaitingTimer();
         this.cancelRequest();
@@ -1333,32 +1217,31 @@ class RequestModalController {
 
     if (confirm("Are you sure you want to cancel this request?")) {
       try {
-        const token = localStorage.getItem("access_token");
+        // Update API token
+        pasugoAPI.updateToken();
 
-        await fetch(
-          `https://pasugo.onrender.com/api/requests/${this.requestId}/cancel`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        // Call API to cancel request
+        const result = await pasugoAPI.cancelRequest(this.requestId);
 
-        this.closeWaitingModal();
-        this.resetForm();
-        alert("Request cancelled");
+        if (result.success) {
+          this.closeWaitingModal();
+          this.resetForm();
+          alert("Request cancelled successfully");
+        } else {
+          alert("Error: " + result.message);
+        }
       } catch (error) {
         console.error("Cancel error:", error);
+        alert("Failed to cancel request");
       }
     }
   }
 
-  // Simulate rider acceptance
   simulateRiderAcceptance() {
     if (this.isWaiting) {
       console.log("🎉 Rider accepted request!");
       this.stopWaitingTimer();
 
-      // Simulate rider data
       const riderData = {
         id: 1,
         name: "Juan Dela Cruz",
@@ -1383,7 +1266,6 @@ class RequestModalController {
 
     this.openChatModal();
 
-    // Clear previous messages
     this.chatContainer.innerHTML = `
       <div class="message-group system">
         <div class="message-bubble system">
@@ -1392,7 +1274,6 @@ class RequestModalController {
       </div>
     `;
 
-    // Add welcome message
     setTimeout(() => {
       this.addRiderMessage(
         `Hi! I'll help you with ${this.formData.serviceType}. Let me get started right away! 👍`,
@@ -1410,8 +1291,6 @@ class RequestModalController {
 
     messageGroup.appendChild(bubble);
     this.chatContainer.appendChild(messageGroup);
-
-    // Auto-scroll
     this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
   }
 
@@ -1425,8 +1304,6 @@ class RequestModalController {
 
     messageGroup.appendChild(bubble);
     this.chatContainer.appendChild(messageGroup);
-
-    // Auto-scroll
     this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
   }
 
@@ -1435,11 +1312,9 @@ class RequestModalController {
 
     if (!message) return;
 
-    // Add customer message
     this.addCustomerMessage(message);
     this.messageInput.value = "";
 
-    // Simulate rider response
     setTimeout(() => {
       const responses = [
         "Got it! 👍",
@@ -1467,14 +1342,13 @@ class RequestModalController {
       serviceType: null,
       vehicleType: null,
       billPhotos: [],
-      attachedFiles: [], // Reset attached files
+      attachedFiles: [],
       items: "",
       budget: 0,
       instructions: "",
       location: null,
     };
 
-    // Reset UI
     this.serviceCards.forEach((card) => card.classList.remove("selected"));
     this.vehicleCards.forEach((card) => card.classList.remove("selected"));
     this.vehicleSection.style.display = "none";
@@ -1498,7 +1372,6 @@ class RequestModalController {
     this.instructions.value = "";
     this.step1Next.disabled = true;
 
-    // Reset steps
     Object.keys(this.formSteps).forEach((step) => {
       this.formSteps[step].classList.remove("active");
       this.stepIndicators[step].classList.remove("active", "completed");
@@ -1510,11 +1383,6 @@ class RequestModalController {
 
     console.log("🔄 Form reset");
   }
-}
-
-// Export for use in other modules if needed
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = RequestModalController;
 }
 
 // Initialize ONLY ONCE when DOM is ready
