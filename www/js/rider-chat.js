@@ -106,15 +106,16 @@ class RiderChatManager {
       /* Rider Chat Panel */
       .rider-chat-panel {
         position: fixed;
-        bottom: 70px;
+        bottom: calc(70px + env(safe-area-inset-bottom, 0px));
         left: 0;
         right: 0;
-        height: 60vh;
+        height: 55vh;
+        max-height: calc(100vh - 150px);
         background: #fff;
         border-top-left-radius: 25px;
         border-top-right-radius: 25px;
         box-shadow: 0 -5px 30px rgba(0,0,0,0.2);
-        z-index: 500;
+        z-index: 25;
         display: flex;
         flex-direction: column;
         transform: translateY(100%);
