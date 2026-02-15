@@ -1370,15 +1370,15 @@ class RequestModalController {
         const status = request.status?.toLowerCase();
 
         // Handle status transitions
-        if (status === 'in_progress' && this.requestStatus !== 'delivering') {
+        if (status === "in_progress" && this.requestStatus !== "delivering") {
           this.handleDeliveryStarted(request);
-        } else if (status === 'completed') {
+        } else if (status === "completed") {
           this.handleDeliveryCompleted(request);
-        } else if (status === 'cancelled') {
+        } else if (status === "cancelled") {
           this.handleRequestCancelled();
         }
       } catch (err) {
-        console.error('[StatusPoll] Error:', err);
+        console.error("[StatusPoll] Error:", err);
       }
     }, 5000);
   }
@@ -1391,14 +1391,14 @@ class RequestModalController {
   }
 
   handleDeliveryStarted(request) {
-    console.log('🚚 Delivery started!');
-    this.requestStatus = 'delivering';
+    console.log("🚚 Delivery started!");
+    this.requestStatus = "delivering";
     this.saveRequestState();
 
     // Update UI to show delivery status
     if (this.riderStatus) {
-      this.riderStatus.textContent = 'Delivering';
-      this.riderStatus.style.color = '#17a2b8';
+      this.riderStatus.textContent = "Delivering";
+      this.riderStatus.style.color = "#17a2b8";
     }
 
     // Show delivery notification
@@ -1406,32 +1406,35 @@ class RequestModalController {
   }
 
   handleDeliveryCompleted(request) {
-    console.log('✅ Delivery completed!');
+    console.log("✅ Delivery completed!");
     this.stopDeliveryStatusPolling();
-    
+
     // Show completion UI
     this.showCompletionModal(request);
   }
 
   handleRequestCancelled() {
-    console.log('❌ Request was cancelled');
+    console.log("❌ Request was cancelled");
     this.stopDeliveryStatusPolling();
     this.chat.disconnect();
     this.clearRequestState();
     this.closeChatModal();
-    alert('Request has been cancelled.');
+    alert("Request has been cancelled.");
   }
 
   showDeliveryBanner(request) {
     // Create or update delivery banner
-    let banner = document.getElementById('deliveryStatusBanner');
+    let banner = document.getElementById("deliveryStatusBanner");
     if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'deliveryStatusBanner';
-      banner.style.cssText = 'background:linear-gradient(135deg, #17a2b8, #138496);color:white;padding:12px 15px;text-align:center;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;';
+      banner = document.createElement("div");
+      banner.id = "deliveryStatusBanner";
+      banner.style.cssText =
+        "background:linear-gradient(135deg, #17a2b8, #138496);color:white;padding:12px 15px;text-align:center;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;";
 
       // Insert at top of chat modal
-      const chatHeader = this.chatModalOverlay?.querySelector('.chat-header') || this.chatModalOverlay?.querySelector('.chat-modal');
+      const chatHeader =
+        this.chatModalOverlay?.querySelector(".chat-header") ||
+        this.chatModalOverlay?.querySelector(".chat-modal");
       if (chatHeader?.parentElement) {
         chatHeader.parentElement.insertBefore(banner, chatHeader.nextSibling);
       }
@@ -1441,7 +1444,7 @@ class RequestModalController {
       <i class="fa-solid fa-truck fa-beat-fade"></i>
       <span>Rider is on the way to deliver your items!</span>
     `;
-    banner.style.display = 'flex';
+    banner.style.display = "flex";
 
     // Show payment reminder
     if (request.total_cost || request.budget) {
@@ -1453,15 +1456,19 @@ class RequestModalController {
   }
 
   showPaymentReminder(totalCost, serviceFee) {
-    let reminder = document.getElementById('paymentReminder');
+    let reminder = document.getElementById("paymentReminder");
     if (!reminder) {
-      reminder = document.createElement('div');
-      reminder.id = 'paymentReminder';
-      reminder.style.cssText = 'background:#fff3cd;border:1px solid #ffc107;padding:15px;margin:10px;border-radius:12px;';
-      
+      reminder = document.createElement("div");
+      reminder.id = "paymentReminder";
+      reminder.style.cssText =
+        "background:#fff3cd;border:1px solid #ffc107;padding:15px;margin:10px;border-radius:12px;";
+
       // Insert in chat messages area
       if (this.chatContainer?.parentElement) {
-        this.chatContainer.parentElement.insertBefore(reminder, this.chatContainer);
+        this.chatContainer.parentElement.insertBefore(
+          reminder,
+          this.chatContainer,
+        );
       }
     }
 
@@ -1475,10 +1482,14 @@ class RequestModalController {
           <span>Items Cost:</span>
           <span>₱${parseFloat(totalCost).toFixed(2)}</span>
         </div>
-        ${serviceFee ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        ${
+          serviceFee
+            ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
           <span>Service Fee:</span>
           <span>₱${parseFloat(serviceFee).toFixed(2)}</span>
-        </div>` : ''}
+        </div>`
+            : ""
+        }
         <div style="display:flex;justify-content:space-between;font-weight:600;border-top:1px solid #ddd;padding-top:8px;margin-top:8px;">
           <span>Total to Pay:</span>
           <span style="color:#28a745;font-size:16px;">₱${total.toFixed(2)}</span>
@@ -1488,19 +1499,20 @@ class RequestModalController {
         <i class="fa-solid fa-info-circle"></i> Please prepare exact payment for the rider
       </div>
     `;
-    reminder.style.display = 'block';
+    reminder.style.display = "block";
   }
 
   showCompletionModal(request) {
     // Remove delivery banner and payment reminder
-    document.getElementById('deliveryStatusBanner')?.remove();
-    document.getElementById('paymentReminder')?.remove();
+    document.getElementById("deliveryStatusBanner")?.remove();
+    document.getElementById("paymentReminder")?.remove();
 
     // Create completion overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'completionOverlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000;';
-    
+    const overlay = document.createElement("div");
+    overlay.id = "completionOverlay";
+    overlay.style.cssText =
+      "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000;";
+
     overlay.innerHTML = `
       <div style="background:white;padding:30px;border-radius:20px;text-align:center;max-width:320px;margin:20px;">
         <div style="font-size:60px;margin-bottom:15px;">🎉</div>
@@ -1524,12 +1536,12 @@ class RequestModalController {
     document.body.appendChild(overlay);
 
     // Event listeners
-    overlay.querySelector('#rateRiderBtn')?.addEventListener('click', () => {
+    overlay.querySelector("#rateRiderBtn")?.addEventListener("click", () => {
       // TODO: Implement rating modal
-      alert('Rating feature coming soon!');
+      alert("Rating feature coming soon!");
     });
 
-    overlay.querySelector('#doneBtn')?.addEventListener('click', () => {
+    overlay.querySelector("#doneBtn")?.addEventListener("click", () => {
       overlay.remove();
       this.completeDelivery();
     });

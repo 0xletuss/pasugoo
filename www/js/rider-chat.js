@@ -799,7 +799,9 @@ class RiderChatManager {
     if (taskItemsList) {
       // Format items/instructions
       const items =
-        request.item_description || request.details || "No items specified";
+        request.items_description ||
+        request.special_instructions ||
+        "No items specified";
       taskItemsList.innerHTML = `
         <div style="margin-bottom:8px"><strong>${this.getServiceIcon(request.service_type)} ${this.formatServiceType(request.service_type)}</strong></div>
         <div style="white-space:pre-wrap">${items}</div>
@@ -808,14 +810,19 @@ class RiderChatManager {
 
     if (taskMeta) {
       const metaItems = [];
-      if (request.budget) {
+      if (request.budget_limit) {
         metaItems.push(
-          `<span><i class="fa-solid fa-peso-sign"></i> ₱${parseFloat(request.budget).toFixed(2)}</span>`,
+          `<span><i class="fa-solid fa-peso-sign"></i> ₱${parseFloat(request.budget_limit).toFixed(2)}</span>`,
         );
       }
-      if (request.pickup_address) {
+      if (request.pickup_location) {
         metaItems.push(
-          `<span><i class="fa-solid fa-location-dot"></i> ${this.truncateText(request.pickup_address, 30)}</span>`,
+          `<span><i class="fa-solid fa-location-dot"></i> ${this.truncateText(request.pickup_location, 30)}</span>`,
+        );
+      }
+      if (request.delivery_address) {
+        metaItems.push(
+          `<span><i class="fa-solid fa-map-marker-alt"></i> ${this.truncateText(request.delivery_address, 30)}</span>`,
         );
       }
       taskMeta.innerHTML = metaItems.join("");
