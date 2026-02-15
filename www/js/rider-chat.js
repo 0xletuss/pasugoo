@@ -20,6 +20,7 @@ class RiderChatManager {
     this.messageQueue = [];
     this.isOpen = false;
     this.unreadCount = 0;
+    this.currentRequestStatus = null;
 
     // DOM elements (will be set when panel is created)
     this.chatPanel = null;
@@ -362,6 +363,135 @@ class RiderChatManager {
       .active-task-banner.visible {
         display: flex;
       }
+
+      /* Task Panel Styles */
+      .rider-task-panel {
+        background: #f8f9fa;
+        border-bottom: 1px solid #eee;
+        padding: 12px 15px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .task-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .task-panel-header h4 {
+        margin: 0;
+        font-size: 13px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .task-toggle-btn {
+        background: none;
+        border: none;
+        font-size: 14px;
+        color: #666;
+        cursor: pointer;
+        padding: 4px;
+      }
+
+      .task-items-list {
+        background: white;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 10px;
+      }
+
+      .task-meta span {
+        background: #e9ecef;
+        padding: 4px 8px;
+        border-radius: 12px;
+      }
+
+      .task-action-btns {
+        display: flex;
+        gap: 8px;
+      }
+
+      .task-action-btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+      }
+
+      .task-action-btn.primary {
+        background: #28a745;
+        color: white;
+      }
+
+      .task-action-btn.secondary {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .task-action-btn.complete {
+        background: var(--primary-yellow);
+        color: var(--primary-black);
+      }
+
+      .task-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      }
+
+      .task-action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .task-status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .task-status-badge.assigned {
+        background: #ffc107;
+        color: #000;
+      }
+
+      .task-status-badge.in_progress {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .task-status-badge.completed {
+        background: #28a745;
+        color: white;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -384,6 +514,24 @@ class RiderChatManager {
           <i class="fa-solid fa-chevron-down"></i>
         </button>
       </div>
+      
+      <!-- Task Panel -->
+      <div class="rider-task-panel" id="riderTaskPanel">
+        <div class="task-panel-header">
+          <h4><i class="fa-solid fa-clipboard-list"></i> Task Details</h4>
+          <span class="task-status-badge assigned" id="taskStatusBadge">Loading...</span>
+        </div>
+        <div class="task-items-list" id="taskItemsList">
+          Loading task details...
+        </div>
+        <div class="task-meta" id="taskMeta"></div>
+        <div class="task-action-btns" id="taskActionBtns">
+          <button class="task-action-btn primary" id="startDeliveryBtn" disabled>
+            <i class="fa-solid fa-truck"></i> Start Delivery
+          </button>
+        </div>
+      </div>
+      
       <div class="rider-chat-messages" id="riderChatMessages">
         <div class="rider-chat-system-msg">Loading messages...</div>
       </div>
@@ -456,6 +604,19 @@ class RiderChatManager {
     if (banner) {
       banner.addEventListener("click", () => this.openChat());
     }
+
+    // Task action buttons
+    const startDeliveryBtn = document.getElementById("startDeliveryBtn");
+    if (startDeliveryBtn) {
+      startDeliveryBtn.addEventListener("click", () => this.startDelivery());
+    }
+
+    const completeDeliveryBtn = document.getElementById("completeDeliveryBtn");
+    if (completeDeliveryBtn) {
+      completeDeliveryBtn.addEventListener("click", () =>
+        this.completeDelivery(),
+      );
+    }
   }
 
   // ── Connect to conversation ──────────────────────────────
@@ -491,6 +652,9 @@ class RiderChatManager {
 
       // Show active task banner
       this.showActiveTaskBanner();
+
+      // Fetch and display request details
+      await this.fetchRequestDetails();
 
       // Update badge on message nav
       this.updateChatBadge();
@@ -567,10 +731,286 @@ class RiderChatManager {
     this.isConnected = false;
     this.conversationId = null;
     this.requestId = null;
+    this.currentRequestStatus = null;
     this.reconnectAttempts = 0;
     this.messageQueue = [];
     this.clearActiveRequest();
     this.closeChat();
+  }
+
+  // ── Fetch and display request details ────────────────────
+  async fetchRequestDetails() {
+    if (!this.requestId) return;
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch request details");
+      }
+
+      const data = await res.json();
+      const request = data.data;
+
+      this.currentRequestStatus = request.status;
+      this.displayTaskDetails(request);
+      this.updateTaskActionButtons(request.status);
+
+      // Update customer info
+      const customerName = document.getElementById("chatCustomerName");
+      if (customerName && request.customer_name) {
+        customerName.textContent = request.customer_name;
+      }
+      const customerAvatar = document.getElementById("chatCustomerAvatar");
+      if (customerAvatar && request.customer_name) {
+        customerAvatar.textContent = request.customer_name
+          .charAt(0)
+          .toUpperCase();
+      }
+    } catch (err) {
+      console.error("[RiderChat] fetchRequestDetails error:", err);
+      const taskItemsList = document.getElementById("taskItemsList");
+      if (taskItemsList) {
+        taskItemsList.innerHTML = `<div style="color:#dc3545">Failed to load task details</div>`;
+      }
+    }
+  }
+
+  displayTaskDetails(request) {
+    const taskItemsList = document.getElementById("taskItemsList");
+    const taskMeta = document.getElementById("taskMeta");
+    const taskStatusBadge = document.getElementById("taskStatusBadge");
+
+    if (taskStatusBadge) {
+      const statusText =
+        request.status === "in_progress"
+          ? "Delivering"
+          : request.status.charAt(0).toUpperCase() + request.status.slice(1);
+      taskStatusBadge.textContent = statusText;
+      taskStatusBadge.className = `task-status-badge ${request.status}`;
+    }
+
+    if (taskItemsList) {
+      // Format items/instructions
+      const items =
+        request.item_description || request.details || "No items specified";
+      taskItemsList.innerHTML = `
+        <div style="margin-bottom:8px"><strong>${this.getServiceIcon(request.service_type)} ${this.formatServiceType(request.service_type)}</strong></div>
+        <div style="white-space:pre-wrap">${items}</div>
+      `;
+    }
+
+    if (taskMeta) {
+      const metaItems = [];
+      if (request.budget) {
+        metaItems.push(
+          `<span><i class="fa-solid fa-peso-sign"></i> ₱${parseFloat(request.budget).toFixed(2)}</span>`,
+        );
+      }
+      if (request.pickup_address) {
+        metaItems.push(
+          `<span><i class="fa-solid fa-location-dot"></i> ${this.truncateText(request.pickup_address, 30)}</span>`,
+        );
+      }
+      taskMeta.innerHTML = metaItems.join("");
+    }
+  }
+
+  updateTaskActionButtons(status) {
+    const actionBtns = document.getElementById("taskActionBtns");
+    if (!actionBtns) return;
+
+    if (status === "assigned") {
+      actionBtns.innerHTML = `
+        <button class="task-action-btn primary" id="startDeliveryBtn">
+          <i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery
+        </button>
+      `;
+      document
+        .getElementById("startDeliveryBtn")
+        ?.addEventListener("click", () => this.startDelivery());
+    } else if (status === "in_progress") {
+      actionBtns.innerHTML = `
+        <button class="task-action-btn complete" id="completeDeliveryBtn">
+          <i class="fa-solid fa-check-circle"></i> Complete Delivery
+        </button>
+      `;
+      document
+        .getElementById("completeDeliveryBtn")
+        ?.addEventListener("click", () => this.completeDelivery());
+    } else if (status === "completed") {
+      actionBtns.innerHTML = `
+        <div style="text-align:center;padding:10px;color:#28a745;font-weight:600">
+          <i class="fa-solid fa-check-circle"></i> Task Completed!
+        </div>
+      `;
+    } else {
+      actionBtns.innerHTML = "";
+    }
+  }
+
+  async startDelivery() {
+    if (!this.requestId) return;
+
+    const btn = document.getElementById("startDeliveryBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Starting...';
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/start-delivery`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to start delivery");
+      }
+
+      this.currentRequestStatus = "in_progress";
+      this.updateTaskActionButtons("in_progress");
+
+      // Update status badge
+      const taskStatusBadge = document.getElementById("taskStatusBadge");
+      if (taskStatusBadge) {
+        taskStatusBadge.textContent = "Delivering";
+        taskStatusBadge.className = "task-status-badge in_progress";
+      }
+
+      // Send chat message
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(
+          JSON.stringify({
+            event: "send_message",
+            content:
+              "🚚 I've finished shopping and am now on my way to deliver your items!",
+            message_type: "text",
+          }),
+        );
+      }
+
+      this.showSystem("Delivery started! On your way to the customer.");
+    } catch (err) {
+      console.error("[RiderChat] startDelivery error:", err);
+      alert("Failed to start delivery: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery';
+      }
+    }
+  }
+
+  async completeDelivery() {
+    if (!this.requestId) return;
+
+    // Confirm completion
+    if (
+      !confirm(
+        "Are you sure you want to complete this delivery? Make sure you've received payment from the customer.",
+      )
+    ) {
+      return;
+    }
+
+    const btn = document.getElementById("completeDeliveryBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Completing...';
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/complete-delivery`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to complete delivery");
+      }
+
+      this.currentRequestStatus = "completed";
+      this.updateTaskActionButtons("completed");
+
+      // Update status badge
+      const taskStatusBadge = document.getElementById("taskStatusBadge");
+      if (taskStatusBadge) {
+        taskStatusBadge.textContent = "Completed";
+        taskStatusBadge.className = "task-status-badge completed";
+      }
+
+      // Send completion message
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(
+          JSON.stringify({
+            event: "send_message",
+            content:
+              "✅ Delivery completed! Thank you for using Pasugo. Have a great day!",
+            message_type: "text",
+          }),
+        );
+      }
+
+      this.showSystem("Delivery completed successfully!");
+
+      // Close chat after delay
+      setTimeout(() => {
+        alert("Task completed! Great job! 🎉");
+        this.disconnect();
+      }, 2000);
+    } catch (err) {
+      console.error("[RiderChat] completeDelivery error:", err);
+      alert("Failed to complete delivery: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-check-circle"></i> Complete Delivery';
+      }
+    }
+  }
+
+  // ── Helper methods ───────────────────────────────────────
+  getServiceIcon(serviceType) {
+    const icons = {
+      pabili: "🛒",
+      pasugo: "📦",
+      pahatid: "🏍️",
+    };
+    return icons[serviceType?.toLowerCase()] || "📋";
+  }
+
+  formatServiceType(serviceType) {
+    if (!serviceType) return "Service";
+    return serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+  }
+
+  truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
   }
 
   // ── Send message ─────────────────────────────────────────
