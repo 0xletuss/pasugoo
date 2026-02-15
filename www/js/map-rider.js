@@ -63,6 +63,14 @@ class RiderMapController {
       // Start location tracking
       this.startLocationTracking();
 
+      // Invalidate size after a short delay to ensure proper rendering
+      setTimeout(() => {
+        if (this.map) {
+          this.map.invalidateSize();
+          console.log("🗺️ Map size invalidated");
+        }
+      }, 500);
+
       return true;
     } catch (error) {
       console.error("❌ Error initializing map:", error);
@@ -78,12 +86,41 @@ class RiderMapController {
     if (recenterBtn) {
       recenterBtn.addEventListener("click", () => {
         if (this.currentPosition) {
+          console.log(
+            "🎯 Recentering to current position:",
+            this.currentPosition,
+          );
           this.map.setView(this.currentPosition, 16, {
             animate: true,
             duration: 0.5,
           });
         } else {
-          alert("Getting your location...");
+          // Try to get current location
+          console.log("📍 Trying to get current location...");
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                this.currentPosition = [lat, lng];
+                console.log("✅ Got location:", this.currentPosition);
+                this.map.setView(this.currentPosition, 16, {
+                  animate: true,
+                  duration: 0.5,
+                });
+                this.updateRiderMarker(lat, lng);
+              },
+              (error) => {
+                console.error("❌ Location error:", error);
+                alert(
+                  "Unable to get your location. Please enable location services.",
+                );
+              },
+              { enableHighAccuracy: true, timeout: 10000 },
+            );
+          } else {
+            alert("Location services not available.");
+          }
         }
       });
     }
@@ -161,12 +198,19 @@ class RiderMapController {
         // Update current position
         this.currentPosition = [lat, lng];
 
+        // Center map on first position (before creating marker)
+        const isFirstPosition = !this.riderMarker;
+
         // Update or create marker
         this.updateRiderMarker(lat, lng, accuracy);
 
         // Center map on first position
-        if (!this.riderMarker) {
-          this.map.setView([lat, lng], 16);
+        if (isFirstPosition) {
+          this.map.setView([lat, lng], 16, {
+            animate: true,
+            duration: 0.5,
+          });
+          console.log("🎯 Centering map on rider location");
         }
 
         // Update status
