@@ -1401,13 +1401,53 @@ class RequestModalController {
       this.riderStatus.style.color = "#17a2b8";
     }
 
+    // Update progress steps - highlight step 3
+    this.updateProgressToDelivering();
+
     // Show delivery notification
     this.showDeliveryBanner(request);
+  }
+
+  // Update progress indicators to show delivering state
+  updateProgressToDelivering() {
+    const step2 = document.getElementById("progressStep2");
+    const step2Label = document.getElementById("step2Label");
+    const step3 = document.getElementById("progressStep3");
+
+    // Mark step 2 as completed
+    if (step2) {
+      step2.classList.remove("active");
+      step2.classList.add("completed");
+      step2.innerHTML = '<i class="fa-solid fa-check"></i>';
+    }
+    if (step2Label) {
+      step2Label.textContent = "Shopping Done";
+    }
+
+    // Mark step 3 as active
+    if (step3) {
+      step3.classList.add("active");
+    }
+  }
+
+  // Update progress indicators to show completed state
+  updateProgressToCompleted() {
+    const step3 = document.getElementById("progressStep3");
+
+    // Mark step 3 as completed
+    if (step3) {
+      step3.classList.remove("active");
+      step3.classList.add("completed");
+      step3.innerHTML = '<i class="fa-solid fa-check"></i>';
+    }
   }
 
   handleDeliveryCompleted(request) {
     console.log("✅ Delivery completed!");
     this.stopDeliveryStatusPolling();
+
+    // Update progress to completed
+    this.updateProgressToCompleted();
 
     // Show completion UI
     this.showCompletionModal(request);
@@ -1642,8 +1682,9 @@ class RequestModalController {
             name: request.rider_name,
             id: request.rider_id,
           });
-          // Show delivery banner after a short delay for UI to load
+          // Show delivery banner and update progress after a short delay for UI to load
           setTimeout(() => {
+            this.updateProgressToDelivering();
             this.showDeliveryBanner(request);
           }, 500);
         }
