@@ -393,6 +393,7 @@ class RequestModalController {
     this.waitingTimer = 0;
     this.waitingTimerId = null;
     this.statusPollInterval = null;
+    this.deliveryStatusPollInterval = null;
     this.requestId = null;
     this.requestStatus = null; // Track current status: null, 'waiting', 'shopping', 'delivering', 'completed'
     this.chat = new ChatManager(this); // ✅ real WebSocket chat
@@ -677,6 +678,7 @@ class RequestModalController {
 
   // Fully close chat and clear everything (call when delivery is done)
   completeDelivery() {
+    this.stopDeliveryStatusPolling();
     this.chat.disconnect();
     this.clearRequestState();
     this.resetForm();
@@ -1341,6 +1343,196 @@ class RequestModalController {
 
     // Connect WebSocket and load history
     this.chat.connect(this.requestId);
+
+    // Start polling for delivery status changes
+    this.startDeliveryStatusPolling();
+  }
+
+  // ── Delivery Status Polling ───────────────────────────────
+  startDeliveryStatusPolling() {
+    // Clear any existing interval
+    if (this.deliveryStatusPollInterval) {
+      clearInterval(this.deliveryStatusPollInterval);
+    }
+
+    // Poll every 5 seconds for status changes
+    this.deliveryStatusPollInterval = setInterval(async () => {
+      if (!this.requestId) {
+        clearInterval(this.deliveryStatusPollInterval);
+        return;
+      }
+
+      try {
+        const result = await pasugoAPI.getRequestDetails(this.requestId);
+        if (!result.success) return;
+
+        const request = result.data;
+        const status = request.status?.toLowerCase();
+
+        // Handle status transitions
+        if (status === 'in_progress' && this.requestStatus !== 'delivering') {
+          this.handleDeliveryStarted(request);
+        } else if (status === 'completed') {
+          this.handleDeliveryCompleted(request);
+        } else if (status === 'cancelled') {
+          this.handleRequestCancelled();
+        }
+      } catch (err) {
+        console.error('[StatusPoll] Error:', err);
+      }
+    }, 5000);
+  }
+
+  stopDeliveryStatusPolling() {
+    if (this.deliveryStatusPollInterval) {
+      clearInterval(this.deliveryStatusPollInterval);
+      this.deliveryStatusPollInterval = null;
+    }
+  }
+
+  handleDeliveryStarted(request) {
+    console.log('🚚 Delivery started!');
+    this.requestStatus = 'delivering';
+    this.saveRequestState();
+
+    // Update UI to show delivery status
+    if (this.riderStatus) {
+      this.riderStatus.textContent = 'Delivering';
+      this.riderStatus.style.color = '#17a2b8';
+    }
+
+    // Show delivery notification
+    this.showDeliveryBanner(request);
+  }
+
+  handleDeliveryCompleted(request) {
+    console.log('✅ Delivery completed!');
+    this.stopDeliveryStatusPolling();
+    
+    // Show completion UI
+    this.showCompletionModal(request);
+  }
+
+  handleRequestCancelled() {
+    console.log('❌ Request was cancelled');
+    this.stopDeliveryStatusPolling();
+    this.chat.disconnect();
+    this.clearRequestState();
+    this.closeChatModal();
+    alert('Request has been cancelled.');
+  }
+
+  showDeliveryBanner(request) {
+    // Create or update delivery banner
+    let banner = document.getElementById('deliveryStatusBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'deliveryStatusBanner';
+      banner.style.cssText = 'background:linear-gradient(135deg, #17a2b8, #138496);color:white;padding:12px 15px;text-align:center;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;';
+
+      // Insert at top of chat modal
+      const chatHeader = this.chatModalOverlay?.querySelector('.chat-header') || this.chatModalOverlay?.querySelector('.chat-modal');
+      if (chatHeader?.parentElement) {
+        chatHeader.parentElement.insertBefore(banner, chatHeader.nextSibling);
+      }
+    }
+
+    banner.innerHTML = `
+      <i class="fa-solid fa-truck fa-beat-fade"></i>
+      <span>Rider is on the way to deliver your items!</span>
+    `;
+    banner.style.display = 'flex';
+
+    // Show payment reminder
+    if (request.total_cost || request.budget) {
+      const cost = request.total_cost || request.budget;
+      setTimeout(() => {
+        this.showPaymentReminder(cost, request.service_fee || 0);
+      }, 2000);
+    }
+  }
+
+  showPaymentReminder(totalCost, serviceFee) {
+    let reminder = document.getElementById('paymentReminder');
+    if (!reminder) {
+      reminder = document.createElement('div');
+      reminder.id = 'paymentReminder';
+      reminder.style.cssText = 'background:#fff3cd;border:1px solid #ffc107;padding:15px;margin:10px;border-radius:12px;';
+      
+      // Insert in chat messages area
+      if (this.chatContainer?.parentElement) {
+        this.chatContainer.parentElement.insertBefore(reminder, this.chatContainer);
+      }
+    }
+
+    const total = parseFloat(totalCost) + parseFloat(serviceFee);
+    reminder.innerHTML = `
+      <div style="font-weight:600;color:#856404;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+        <i class="fa-solid fa-peso-sign"></i> Payment Summary
+      </div>
+      <div style="font-size:13px;color:#333;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span>Items Cost:</span>
+          <span>₱${parseFloat(totalCost).toFixed(2)}</span>
+        </div>
+        ${serviceFee ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span>Service Fee:</span>
+          <span>₱${parseFloat(serviceFee).toFixed(2)}</span>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-weight:600;border-top:1px solid #ddd;padding-top:8px;margin-top:8px;">
+          <span>Total to Pay:</span>
+          <span style="color:#28a745;font-size:16px;">₱${total.toFixed(2)}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#666;margin-top:10px;text-align:center;">
+        <i class="fa-solid fa-info-circle"></i> Please prepare exact payment for the rider
+      </div>
+    `;
+    reminder.style.display = 'block';
+  }
+
+  showCompletionModal(request) {
+    // Remove delivery banner and payment reminder
+    document.getElementById('deliveryStatusBanner')?.remove();
+    document.getElementById('paymentReminder')?.remove();
+
+    // Create completion overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'completionOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    
+    overlay.innerHTML = `
+      <div style="background:white;padding:30px;border-radius:20px;text-align:center;max-width:320px;margin:20px;">
+        <div style="font-size:60px;margin-bottom:15px;">🎉</div>
+        <h2 style="margin:0 0 10px;color:#28a745;">Delivery Complete!</h2>
+        <p style="color:#666;margin-bottom:20px;">Thank you for using Pasugo! We hope you enjoyed our service.</p>
+        
+        <div style="background:#f8f9fa;padding:15px;border-radius:12px;margin-bottom:20px;">
+          <div style="font-size:13px;color:#666;margin-bottom:5px;">Total Paid</div>
+          <div style="font-size:24px;font-weight:600;color:#28a745;">₱${parseFloat(request.total_cost || request.budget || 0).toFixed(2)}</div>
+        </div>
+        
+        <button id="rateRiderBtn" style="width:100%;padding:14px;background:var(--primary-yellow, #ffc107);color:#000;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px;">
+          <i class="fa-solid fa-star"></i> Rate Your Rider
+        </button>
+        <button id="doneBtn" style="width:100%;padding:14px;background:#f8f9fa;color:#333;border:1px solid #ddd;border-radius:12px;font-size:16px;cursor:pointer;">
+          Done
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Event listeners
+    overlay.querySelector('#rateRiderBtn')?.addEventListener('click', () => {
+      // TODO: Implement rating modal
+      alert('Rating feature coming soon!');
+    });
+
+    overlay.querySelector('#doneBtn')?.addEventListener('click', () => {
+      overlay.remove();
+      this.completeDelivery();
+    });
   }
 
   // ✅ Real send — goes through WebSocket
@@ -1417,8 +1609,8 @@ class RequestModalController {
         this.requestStatus = "waiting";
         this.openWaitingModal();
         this.startPollingForRiderResponse();
-      } else if (status === "assigned" || status === "in_progress") {
-        // Rider accepted, in shopping/delivering phase
+      } else if (status === "assigned") {
+        // Rider accepted, in shopping phase
         this.requestStatus = "shopping";
 
         // If we have rider info, show chat
@@ -1427,6 +1619,21 @@ class RequestModalController {
             name: request.rider_name,
             id: request.rider_id,
           });
+        }
+      } else if (status === "in_progress") {
+        // Rider is delivering
+        this.requestStatus = "delivering";
+
+        // If we have rider info, show chat
+        if (request.rider_name) {
+          this.showChatWithRider({
+            name: request.rider_name,
+            id: request.rider_id,
+          });
+          // Show delivery banner after a short delay for UI to load
+          setTimeout(() => {
+            this.showDeliveryBanner(request);
+          }, 500);
         }
       }
 
