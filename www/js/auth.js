@@ -421,15 +421,18 @@ class RegistrationForm {
       const formData = this.getFormData();
 
       // Step 1: Request OTP
-      await this.requestRegistrationOTP(formData.email);
+      const otpResult = await this.requestRegistrationOTP(formData.email);
 
       // Store form data temporarily for OTP verification
       sessionStorage.setItem("pendingRegistration", JSON.stringify(formData));
 
-      this.showSuccess(
-        successDiv,
-        "OTP sent to your email! Please check your inbox.",
-      );
+      // Show OTP in the success message for development/debugging
+      const otpCode = otpResult?.data?.otp_code;
+      const debugMsg = otpCode
+        ? `OTP sent to your email! Your code is: ${otpCode}`
+        : "OTP sent to your email! Please check your inbox.";
+
+      this.showSuccess(successDiv, debugMsg);
 
       // Show OTP input UI
       setTimeout(() => {
@@ -488,6 +491,9 @@ class RegistrationForm {
             type="text" 
             id="otpInput" 
             maxlength="6" 
+            inputmode="numeric"
+            pattern="[0-9]*"
+            autocomplete="one-time-code"
             placeholder="Enter OTP"
             style="text-align: center; font-size: 24px; letter-spacing: 8px;"
             required
@@ -534,6 +540,10 @@ class RegistrationForm {
   }
 
   async verifyOTPAndRegister() {
+    // Guard against double submission (auto-submit + button click race)
+    if (this._isVerifyingOTP) return;
+    this._isVerifyingOTP = true;
+
     const otpInput = document.getElementById("otpInput");
     const verifyBtn = document.getElementById("verifyOTPBtn");
     const errorDiv = document.getElementById("errorMessage");
@@ -543,6 +553,7 @@ class RegistrationForm {
 
     if (otp.length !== 6) {
       this.showError(errorDiv, "Please enter a valid 6-digit OTP");
+      this._isVerifyingOTP = false;
       return;
     }
 
@@ -553,6 +564,14 @@ class RegistrationForm {
       const formData = JSON.parse(
         sessionStorage.getItem("pendingRegistration"),
       );
+
+      if (!formData || !formData.email) {
+        throw new Error(
+          "Registration data not found. Please go back and fill the form again.",
+        );
+      }
+
+      console.log(`📤 Verifying OTP: '${otp}' for email: ${formData.email}`);
 
       const response = await fetch(
         `${API_BASE_URL_AUTH}/api/auth/register/verify-otp`,
@@ -572,8 +591,17 @@ class RegistrationForm {
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "OTP verification failed");
+        const errorData = await response.json();
+        // Handle Pydantic 422 validation errors (detail is an array)
+        let errorMsg = "OTP verification failed";
+        if (Array.isArray(errorData.detail)) {
+          errorMsg = errorData.detail
+            .map((e) => e.msg || e.message || JSON.stringify(e))
+            .join(", ");
+        } else if (typeof errorData.detail === "string") {
+          errorMsg = errorData.detail;
+        }
+        throw new Error(errorMsg);
       }
 
       const result = await response.json();
@@ -593,6 +621,8 @@ class RegistrationForm {
       this.showError(errorDiv, error.message);
       verifyBtn.disabled = false;
       verifyBtn.textContent = "Verify & Register";
+    } finally {
+      this._isVerifyingOTP = false;
     }
   }
 
