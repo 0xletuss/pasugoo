@@ -10,6 +10,7 @@ class RiderMapController {
     this.watchId = null;
     this.isTracking = false;
     this.deliveryMarker = null;
+    this.routeLine = null;
 
     // High accuracy geolocation options
     this.geoOptions = {
@@ -347,6 +348,58 @@ class RiderMapController {
     // Could add a toast notification here
   }
 
+  clearRoute() {
+    if (this.routeLine && this.map) {
+      this.map.removeLayer(this.routeLine);
+      this.routeLine = null;
+    }
+  }
+
+  async drawRouteTo(targetLatLng) {
+    if (!this.map || !this.currentPosition || !targetLatLng) return;
+
+    const [fromLat, fromLng] = this.currentPosition;
+    const [toLat, toLng] = targetLatLng;
+
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+      const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+
+      if (!res.ok) {
+        throw new Error("Route request failed");
+      }
+
+      const data = await res.json();
+      const route = data?.routes?.[0];
+      if (!route?.geometry?.coordinates) {
+        throw new Error("No route geometry found");
+      }
+
+      const latLngs = route.geometry.coordinates.map(([lng, lat]) => [
+        lat,
+        lng,
+      ]);
+
+      if (this.routeLine) {
+        this.routeLine.setLatLngs(latLngs);
+      } else {
+        this.routeLine = L.polyline(latLngs, {
+          color: "#28a745",
+          weight: 5,
+          opacity: 0.9,
+          lineJoin: "round",
+        }).addTo(this.map);
+      }
+
+      const bounds = L.latLngBounds(latLngs);
+      this.map.fitBounds(bounds, { padding: [40, 80] });
+    } catch (error) {
+      console.error("Map Error:", error);
+    }
+  }
+
   // Stop location tracking
   stop() {
     if (this.watchId) {
@@ -354,6 +407,70 @@ class RiderMapController {
       this.watchId = null;
       this.isTracking = false;
       console.log("🛑 Location tracking stopped");
+    }
+  }
+
+  // Focus on customer coordinates directly (no geocoding needed)
+  async focusOnCoordinates(
+    lat,
+    lng,
+    customerName,
+    label = "Customer Location",
+  ) {
+    if (!this.map) return;
+
+    console.log(`📍 Focusing on coordinates: ${lat}, ${lng} (${customerName})`);
+
+    // Remove old delivery marker
+    if (this.deliveryMarker) {
+      this.map.removeLayer(this.deliveryMarker);
+      this.deliveryMarker = null;
+    }
+
+    // Create delivery marker with pulsing animation
+    const deliveryIcon = L.divIcon({
+      className: "custom-delivery-marker",
+      html: `
+        <div class="delivery-marker-pulse"></div>
+        <div style="
+          background: #28a745;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          border: 3px solid #ffffff;
+          box-shadow: 0 4px 16px rgba(40, 167, 69, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          z-index: 2;
+        ">
+          <i class="fa-solid fa-house" style="color: #ffffff; font-size: 18px;"></i>
+        </div>
+      `,
+      iconSize: [42, 42],
+      iconAnchor: [21, 21],
+    });
+
+    this.deliveryMarker = L.marker([lat, lng], {
+      icon: deliveryIcon,
+      zIndexOffset: 900,
+    })
+      .addTo(this.map)
+      .bindPopup(
+        `<div style="text-align:center;padding:5px;">
+          <strong>${customerName}</strong><br>
+          <small>${label}</small>
+        </div>`,
+      )
+      .openPopup();
+
+    // Draw route from rider to customer
+    if (this.currentPosition) {
+      await this.drawRouteTo([lat, lng]);
+    } else {
+      // No rider position yet, just fly to customer
+      this.map.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
     }
   }
 
@@ -397,12 +514,19 @@ class RiderMapController {
   }
 
   // Focus the map on a delivery address using geocoding
-  async focusOnDeliveryAddress(address, customerName) {
-    if (!this.map || !address) return;
+  async focusOnDeliveryAddress(
+    address,
+    customerName,
+    label = "Delivery Address",
+  ) {
+    if (!this.map || !address) {
+      this.showError("Missing address for map focus");
+      return;
+    }
 
     try {
       const encoded = encodeURIComponent(address);
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encoded}`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encoded}&email=support@pasugo.app`;
       const res = await fetch(url, {
         headers: {
           Accept: "application/json",
@@ -453,16 +577,20 @@ class RiderMapController {
             `
           <div style="text-align: center; padding: 5px;">
             <strong>${customerName || "Customer"}</strong><br>
-            <small>Delivery Address</small>
+            <small>${label}</small>
           </div>
         `,
           );
       }
 
-      this.map.flyTo([lat, lng], 16, {
-        animate: true,
-        duration: 0.8,
-      });
+      if (this.currentPosition) {
+        await this.drawRouteTo([lat, lng]);
+      } else {
+        this.map.flyTo([lat, lng], 16, {
+          animate: true,
+          duration: 0.8,
+        });
+      }
     } catch (error) {
       console.error("Map Error:", error);
     }

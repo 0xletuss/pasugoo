@@ -121,10 +121,14 @@ class RiderChatManager {
         flex-direction: column;
         transform: translateY(100%);
         transition: transform 0.3s ease-out;
+        pointer-events: none;
+        visibility: hidden;
       }
 
       .rider-chat-panel.open {
         transform: translateY(0);
+        pointer-events: auto;
+        visibility: visible;
       }
 
       .rider-chat-header {
@@ -931,6 +935,8 @@ class RiderChatManager {
         throw new Error(errData.detail || "Failed to start delivery");
       }
 
+      const responseData = await res.json();
+
       this.currentRequestStatus = "in_progress";
       this.updateTaskActionButtons("in_progress");
 
@@ -955,19 +961,51 @@ class RiderChatManager {
 
       this.showSystem("Delivery started! On your way to the customer.");
 
-      // Close chat and focus map on delivery address
-      const deliveryAddress = this.currentRequestDetails?.delivery_address;
+      // Close chat and navigate to customer location
       this.closeChat();
-      if (
-        deliveryAddress &&
-        window.riderMapController?.focusOnDeliveryAddress
-      ) {
+
+      const customerLoc =
+        responseData?.data?.customer_location ||
+        this.currentRequestDetails?.customer_location;
+      const customerName =
+        responseData?.data?.customer_name ||
+        this.currentRequestDetails?.customer_name ||
+        "Customer";
+
+      if (customerLoc?.latitude && customerLoc?.longitude) {
+        // Use real GPS coordinates from the database
+        console.log(
+          `📍 Customer GPS: ${customerLoc.latitude}, ${customerLoc.longitude}`,
+        );
         setTimeout(() => {
-          window.riderMapController.focusOnDeliveryAddress(
-            deliveryAddress,
-            this.currentRequestDetails?.customer_name || "Customer",
-          );
-        }, 250);
+          if (window.riderMapController?.focusOnCoordinates) {
+            window.riderMapController.focusOnCoordinates(
+              customerLoc.latitude,
+              customerLoc.longitude,
+              customerName,
+              customerLoc.address || "Customer Location",
+            );
+          }
+        }, 300);
+      } else {
+        // Fallback: try text address geocoding
+        const targetAddress =
+          this.currentRequestDetails?.delivery_address ||
+          this.currentRequestDetails?.pickup_location;
+        if (
+          targetAddress &&
+          window.riderMapController?.focusOnDeliveryAddress
+        ) {
+          setTimeout(() => {
+            window.riderMapController.focusOnDeliveryAddress(
+              targetAddress,
+              customerName,
+              "Delivery Address",
+            );
+          }, 300);
+        } else {
+          this.showSystem("No delivery location found for this request.");
+        }
       }
     } catch (err) {
       console.error("[RiderChat] startDelivery error:", err);
