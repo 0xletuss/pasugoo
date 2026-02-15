@@ -94,6 +94,32 @@ class PasugoAPI {
         `Bearer ${this.token.substring(0, 20)}...`,
       );
 
+      // Sync customer's current GPS before creating the request
+      // so the rider gets the freshest location
+      try {
+        if (navigator.geolocation) {
+          const pos = await new Promise((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0,
+            }),
+          );
+          await fetch(`${this.baseURL}/locations/update`, {
+            method: "POST",
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: Math.round(pos.coords.accuracy),
+            }),
+          });
+          console.log("📍 Customer GPS synced before request creation");
+        }
+      } catch (locErr) {
+        console.warn("⚠️ Could not sync location before request:", locErr.message);
+      }
+
       const response = await fetch(`${this.baseURL}/requests/create`, {
         method: "POST",
         headers: this.getAuthHeaders(),

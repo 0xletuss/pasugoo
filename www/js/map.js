@@ -1,6 +1,6 @@
 // map.js - Pasugo Map Controller - Modern Minimalist Design
 // Handles all map interactions, geolocation, and marker management
-// FOR CUSTOMER DASHBOARD - Does NOT send location updates to backend
+// FOR CUSTOMER DASHBOARD - Sends location updates to keep customer position fresh
 
 const API_BASE_URL = "https://pasugo.onrender.com";
 
@@ -30,6 +30,10 @@ class PasugoMap {
 
     // User's current position
     this.userPosition = null;
+
+    // Throttle backend location updates (every 30 seconds)
+    this.lastLocationSyncTime = 0;
+    this.locationSyncInterval = 30000; // 30 seconds
 
     // Authentication state
     this.isAuthenticated = false;
@@ -162,9 +166,14 @@ class PasugoMap {
     // Get street name
     this.reverseGeocode(userLat, userLng);
 
-    // Only fetch riders if authenticated (no location updates for customers)
+    // Send initial location to backend so rider can find customer
     if (this.isAuthenticated) {
-      console.log("📍 Customer view - fetching nearby riders only");
+      this.syncLocationToBackend(userLat, userLng, accuracy);
+    }
+
+    // Only fetch riders if authenticated
+    if (this.isAuthenticated) {
+      console.log("📍 Customer view - fetching nearby riders");
       this.fetchAvailableRiders();
 
       // Auto-refresh riders every 10 seconds
@@ -373,8 +382,10 @@ class PasugoMap {
           this.accuracyCircle.setRadius(accuracy);
         }
 
-        // Note: Customers don't send location updates to backend
-        // Only riders do (via rider-map.js)
+        // Sync customer location to backend (throttled)
+        if (this.isAuthenticated) {
+          this.syncLocationToBackend(userLat, userLng, accuracy);
+        }
       },
       (error) => {
         console.warn("⚠️ Watch position error");
@@ -385,6 +396,39 @@ class PasugoMap {
         timeout: 10000,
       },
     );
+  }
+
+  // Send customer's current GPS to backend so riders can find them
+  async syncLocationToBackend(lat, lng, accuracy) {
+    const now = Date.now();
+    if (now - this.lastLocationSyncTime < this.locationSyncInterval) return;
+    this.lastLocationSyncTime = now;
+
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/api/locations/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+          accuracy: Math.round(accuracy || 0),
+        }),
+      });
+
+      if (res.ok) {
+        console.log("✅ Customer location synced to backend");
+      } else {
+        console.warn("⚠️ Failed to sync customer location:", res.status);
+      }
+    } catch (err) {
+      console.warn("⚠️ Location sync error:", err.message);
+    }
   }
 
   // Stop watching position
