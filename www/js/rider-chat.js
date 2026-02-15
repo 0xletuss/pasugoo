@@ -1004,7 +1004,14 @@ class RiderChatManager {
             );
           }, 300);
         } else {
-          this.showSystem("No delivery location found for this request.");
+          // No GPS and no text address - alert the rider
+          alert(
+            `⚠️ Customer "${customerName}" has no saved location. ` +
+              `Ask them to share their location in the chat, or contact them by phone.`,
+          );
+          console.warn(
+            "[RiderChat] No customer location data available at all",
+          );
         }
       }
     } catch (err) {

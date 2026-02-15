@@ -88,40 +88,28 @@ class PasugoAPI {
         delivery_option: requestData.deliveryOption || null,
       };
 
-      console.log("📤 Sending payload:", payload);
-      console.log(
-        "📤 Auth header:",
-        `Bearer ${this.token.substring(0, 20)}...`,
-      );
-
-      // Sync customer's current GPS before creating the request
-      // so the rider gets the freshest location
+      // Get customer's live GPS and include it directly in the request payload
+      // This ensures the location is saved atomically with the request
       try {
         if (navigator.geolocation) {
           const pos = await new Promise((resolve, reject) =>
             navigator.geolocation.getCurrentPosition(resolve, reject, {
               enableHighAccuracy: true,
               timeout: 5000,
-              maximumAge: 0,
+              maximumAge: 10000,
             }),
           );
-          await fetch(`${this.baseURL}/locations/update`, {
-            method: "POST",
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: Math.round(pos.coords.accuracy),
-            }),
-          });
-          console.log("📍 Customer GPS synced before request creation");
+          payload.latitude = pos.coords.latitude;
+          payload.longitude = pos.coords.longitude;
+          console.log(
+            `📍 Customer GPS included in request: ${pos.coords.latitude}, ${pos.coords.longitude}`,
+          );
         }
       } catch (locErr) {
-        console.warn(
-          "⚠️ Could not sync location before request:",
-          locErr.message,
-        );
+        console.warn("⚠️ Could not get GPS for request:", locErr.message);
       }
+
+      console.log("📤 Sending payload:", payload);
 
       const response = await fetch(`${this.baseURL}/requests/create`, {
         method: "POST",
