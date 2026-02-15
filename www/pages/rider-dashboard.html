@@ -18,10 +18,33 @@
     />
     <style>
       /* Rider Dashboard Specific Styles */
+      :root {
+        --primary-black: #1a1a1a;
+        --primary-yellow: #ffc107;
+        --white: #ffffff;
+        --text-dark: #333;
+        --text-light: #666;
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+        --radius-sm: 12px;
+        --radius-md: 16px;
+        --radius-lg: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         padding: 0;
         overflow: hidden;
+        font-family:
+          "Poppins",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
       }
 
       #riderMap {
@@ -33,43 +56,64 @@
         z-index: 0;
       }
 
-      /* Status Header Bar */
+      /* ═══════════════════════════════════════════════════════════
+         STATUS HEADER BAR - Clean, minimal design
+         ═══════════════════════════════════════════════════════════ */
       .rider-status-bar {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
+        right: 0;
         background: var(--primary-black);
         color: var(--white);
-        padding: 15px 20px;
+        padding: 16px 20px;
+        padding-top: max(16px, env(safe-area-inset-top));
         display: flex;
         justify-content: space-between;
         align-items: center;
         z-index: 100;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-md);
       }
 
       .rider-status-bar .rider-info {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 14px;
+      }
+
+      .rider-status-bar .rider-info > i {
+        font-size: 24px;
+        color: var(--primary-yellow);
+      }
+
+      .rider-status-bar .rider-info > div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
 
       .toggle-online-btn {
-        padding: 8px 16px;
+        padding: 10px 20px;
         background: var(--primary-yellow);
         color: var(--primary-black);
         border: none;
-        border-radius: 20px;
+        border-radius: 25px;
         font-weight: 600;
         cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s;
+        font-size: 13px;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
 
       .toggle-online-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+      }
+
+      .toggle-online-btn:active {
+        transform: scale(0.98);
       }
 
       .toggle-online-btn.offline {
@@ -77,36 +121,45 @@
         color: white;
       }
 
-      /* Incoming Requests Badge */
+      /* ═══════════════════════════════════════════════════════════
+         INCOMING REQUESTS BADGE - Floating notification pill
+         ═══════════════════════════════════════════════════════════ */
       .requests-badge {
         position: fixed;
-        top: 80px;
-        right: 20px;
+        top: 90px;
+        right: 16px;
         background: var(--white);
-        padding: 12px 18px;
-        border-radius: 25px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        padding: 10px 16px;
+        border-radius: 30px;
+        box-shadow: var(--shadow-md);
         z-index: 20;
         display: none;
         align-items: center;
         gap: 10px;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 13px;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
       }
 
       .requests-badge:hover {
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-lg);
         transform: translateY(-2px);
+        border-color: var(--primary-yellow);
+      }
+
+      .requests-badge i {
+        color: var(--primary-yellow);
+        font-size: 16px;
       }
 
       .request-count {
         background: #dc3545;
         color: white;
-        min-width: 28px;
-        height: 28px;
-        border-radius: 50%;
+        min-width: 24px;
+        height: 24px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -126,93 +179,126 @@
         }
       }
 
-      /* Map Controls */
+      /* ═══════════════════════════════════════════════════════════
+         MAP CONTROLS - Modern floating buttons
+         ═══════════════════════════════════════════════════════════ */
       .rider-map-controls {
         position: fixed;
-        top: 80px;
-        left: 20px;
+        top: 90px;
+        left: 16px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         z-index: 20;
       }
 
       .map-control-btn {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         background: var(--white);
         border-radius: 50%;
         border: none;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 18px;
-        color: var(--primary-black);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        font-size: 16px;
+        color: var(--text-dark);
+        box-shadow: var(--shadow-md);
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
       }
 
       .map-control-btn:hover {
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);
+        background: var(--primary-yellow);
+        color: var(--primary-black);
+        transform: scale(1.08);
       }
 
       .map-control-btn:active {
         transform: scale(0.95);
       }
 
-      /* Location Status Card */
+      /* ═══════════════════════════════════════════════════════════
+         LOCATION STATUS CARD - Clean minimal card
+         ═══════════════════════════════════════════════════════════ */
       .location-status-card {
         position: fixed;
         bottom: 100px;
-        left: 20px;
-        right: 20px;
+        left: 16px;
+        right: 16px;
         background: var(--white);
-        padding: 16px;
-        border-radius: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-md);
         z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 12px;
       }
 
       .location-status-card h3 {
-        margin: 0 0 8px 0;
-        font-size: 14px;
+        margin: 0;
+        font-size: 15px;
         font-weight: 600;
         color: var(--text-dark);
+        white-space: nowrap;
       }
 
       .location-status-text {
-        font-size: 12px;
+        flex: 1;
+        font-size: 13px;
         color: var(--text-light);
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .location-status-text span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .location-indicator {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         background: #28a745;
+        flex-shrink: 0;
+        animation: pulse-dot 2s infinite;
       }
 
-      /* Incoming Requests Modal */
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 8px rgba(40, 167, 69, 0);
+        }
+      }
+
+      /* ═══════════════════════════════════════════════════════════
+         INCOMING REQUESTS MODAL - Modern bottom sheet
+         ═══════════════════════════════════════════════════════════ */
       .requests-modal {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        max-height: 70vh;
+        max-height: 75vh;
         background: var(--white);
-        border-top-left-radius: 30px;
-        border-top-right-radius: 30px;
-        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.2);
+        border-top-left-radius: var(--radius-lg);
+        border-top-right-radius: var(--radius-lg);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
         z-index: 25;
-        overflow-y: auto;
+        overflow: hidden;
         animation: slideUp 0.3s ease-out;
-        padding: 20px;
-        padding-bottom: 100px;
+      }
+
+      .requests-modal.hidden {
+        display: none;
       }
 
       @keyframes slideUp {
@@ -224,87 +310,116 @@
         }
       }
 
-      .requests-modal.hidden {
-        display: none;
-      }
-
       .requests-modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #f0f0f0;
+        padding: 20px 20px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        background: var(--white);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      .requests-modal-header::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: #ddd;
+        border-radius: 2px;
       }
 
       .requests-modal-header h2 {
-        font-size: 18px;
+        font-size: 17px;
         margin: 0;
         display: flex;
         align-items: center;
         gap: 10px;
+        font-weight: 600;
       }
 
       .close-requests-btn {
-        background: none;
+        background: #f5f5f5;
         border: none;
-        font-size: 24px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        font-size: 16px;
         color: var(--text-light);
         cursor: pointer;
-        padding: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
       }
 
       .close-requests-btn:hover {
-        color: var(--primary-black);
+        background: #eee;
+        color: var(--text-dark);
       }
 
-      /* Request Card in Modal */
-      .request-card-compact {
-        background: #f8f9fa;
+      #requestsContainer {
         padding: 16px;
-        border-radius: 16px;
-        margin-bottom: 15px;
-        border-left: 4px solid var(--primary-yellow);
-        animation: slideIn 0.3s ease-out;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        max-height: calc(75vh - 70px);
       }
 
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateX(-10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
+      /* ═══════════════════════════════════════════════════════════
+         REQUEST CARD - Clean card design
+         ═══════════════════════════════════════════════════════════ */
+      .request-card-compact {
+        background: var(--white);
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-bottom: 12px;
+        border: 1px solid #eee;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s;
+      }
+
+      .request-card-compact:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary-yellow);
       }
 
       .request-card-compact.urgent {
-        border-left-color: #dc3545;
-        background: #fff5f5;
+        border-left: 4px solid #dc3545;
+        background: #fffafa;
       }
 
       .request-card-header {
         display: flex;
         justify-content: space-between;
-        align-items: start;
-        margin-bottom: 10px;
+        align-items: flex-start;
+        margin-bottom: 12px;
       }
 
       .request-service-type {
-        font-weight: 600;
+        font-weight: 700;
         font-size: 15px;
         color: var(--text-dark);
         text-transform: capitalize;
-        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .request-service-type i {
+        color: var(--primary-yellow);
       }
 
       .request-timer {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        padding: 6px 10px;
+        padding: 5px 10px;
         background: var(--primary-yellow);
-        border-radius: 12px;
+        border-radius: 20px;
         color: var(--primary-black);
         white-space: nowrap;
       }
@@ -326,19 +441,27 @@
       }
 
       .request-customer {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--text-light);
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .request-customer i {
+        font-size: 12px;
       }
 
       .request-items {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--text-dark);
-        background: white;
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        line-height: 1.4;
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        margin-bottom: 14px;
+        line-height: 1.5;
+        border-left: 3px solid var(--primary-yellow);
       }
 
       .request-actions {
@@ -348,17 +471,17 @@
       }
 
       .request-action-btn {
-        padding: 12px;
+        padding: 14px;
         border: none;
-        border-radius: 12px;
+        border-radius: var(--radius-sm);
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
+        gap: 8px;
       }
 
       .request-accept-btn {
@@ -366,33 +489,44 @@
         color: white;
       }
 
-      .request-decline-btn {
-        background: #dc3545;
-        color: white;
+      .request-accept-btn:hover {
+        background: #218838;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
       }
 
-      .request-action-btn:hover {
+      .request-decline-btn {
+        background: #f8f9fa;
+        color: #dc3545;
+        border: 1px solid #dc3545;
+      }
+
+      .request-decline-btn:hover {
+        background: #dc3545;
+        color: white;
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       }
 
       .request-action-btn:active {
-        transform: translateY(0);
+        transform: translateY(0) scale(0.98);
       }
 
-      /* Bottom Navigation for Rider */
+      /* ═══════════════════════════════════════════════════════════
+         BOTTOM NAVIGATION - Modern tab bar with labels
+         ═══════════════════════════════════════════════════════════ */
       .rider-bottom-nav {
         position: fixed;
         bottom: 0;
         left: 0;
-        width: 100%;
+        right: 0;
         background: var(--primary-black);
-        border-top: 1px solid rgba(255, 193, 7, 0.2);
-        padding: 12px 0;
+        padding: 8px 16px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
         display: flex;
         justify-content: space-around;
         align-items: center;
         z-index: 30;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
       }
 
       .rider-nav-item {
@@ -400,38 +534,67 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: var(--white);
+        color: rgba(255, 255, 255, 0.5);
         text-decoration: none;
-        font-size: 20px;
-        padding: 12px;
-        opacity: 0.6;
-        transition: all 0.3s;
+        font-size: 18px;
+        padding: 8px 12px;
+        transition: all 0.2s ease;
+        border-radius: var(--radius-sm);
+        min-width: 56px;
+      }
+
+      .rider-nav-item span {
+        font-size: 10px;
+        margin-top: 4px;
+        font-weight: 500;
       }
 
       .rider-nav-item.active {
-        opacity: 1;
         color: var(--primary-yellow);
+        background: rgba(255, 193, 7, 0.1);
       }
 
       .rider-nav-item:hover {
-        opacity: 0.8;
+        color: rgba(255, 255, 255, 0.8);
       }
 
-      /* Loading State */
+      .rider-nav-item.active:hover {
+        color: var(--primary-yellow);
+      }
+
+      /* Message badge */
+      .rider-nav-item .nav-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 8px;
+        height: 8px;
+        background: #dc3545;
+        border-radius: 50%;
+        display: none;
+      }
+
+      .rider-nav-item .nav-badge.active {
+        display: block;
+      }
+
+      /* ═══════════════════════════════════════════════════════════
+         LOADING OVERLAY - Modern loading state
+         ═══════════════════════════════════════════════════════════ */
       .location-loading-overlay {
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.9);
+        background: var(--primary-black);
         color: white;
-        padding: 25px 35px;
-        border-radius: 20px;
+        padding: 24px 36px;
+        border-radius: var(--radius-md);
         z-index: 1000;
         display: none;
         align-items: center;
-        gap: 15px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        gap: 16px;
+        box-shadow: var(--shadow-lg);
       }
 
       .location-loading-overlay.active {
@@ -439,8 +602,8 @@
       }
 
       .spinner-ring {
-        width: 30px;
-        height: 30px;
+        width: 28px;
+        height: 28px;
         border: 3px solid rgba(255, 193, 7, 0.2);
         border-top: 3px solid var(--primary-yellow);
         border-radius: 50%;
@@ -456,18 +619,74 @@
         }
       }
 
-      /* Leaflet adjustments */
+      /* ═══════════════════════════════════════════════════════════
+         EMPTY STATE - Clean minimal empty state
+         ═══════════════════════════════════════════════════════════ */
+      .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-light);
+      }
+
+      .empty-state i {
+        font-size: 56px;
+        margin-bottom: 16px;
+        display: block;
+        opacity: 0.3;
+      }
+
+      .empty-state p {
+        margin: 0;
+      }
+
+      .empty-state p:first-of-type {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 6px;
+      }
+
+      .empty-state p:last-of-type {
+        font-size: 13px;
+      }
+
+      /* ═══════════════════════════════════════════════════════════
+         LEAFLET ADJUSTMENTS
+         ═══════════════════════════════════════════════════════════ */
       .leaflet-container {
-        font-family: "Poppins", sans-serif;
+        font-family:
+          "Poppins",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
       }
 
       .leaflet-popup-content-wrapper {
-        border-radius: 12px;
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-md);
       }
 
       .leaflet-popup-content {
-        margin: 10px;
-        font-size: 12px;
+        margin: 12px;
+        font-size: 13px;
+      }
+
+      .leaflet-control-zoom {
+        border: none !important;
+        box-shadow: var(--shadow-md) !important;
+      }
+
+      .leaflet-control-zoom a {
+        border: none !important;
+        color: var(--text-dark) !important;
+      }
+
+      .leaflet-control-zoom a:first-child {
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+      }
+
+      .leaflet-control-zoom a:last-child {
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important;
       }
     </style>
   </head>
@@ -477,17 +696,24 @@
       <div class="rider-info">
         <i class="fa-solid fa-motorcycle"></i>
         <div>
-          <div style="font-size: 12px; opacity: 0.8">Rider Dashboard</div>
-          <div style="font-size: 14px; font-weight: 600" id="riderName">
+          <div
+            style="
+              font-size: 11px;
+              opacity: 0.7;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            "
+          >
+            Rider
+          </div>
+          <div style="font-size: 15px; font-weight: 600" id="riderName">
             Loading...
           </div>
         </div>
       </div>
-      <div>
-        <button class="toggle-online-btn offline" id="toggleOnlineBtn">
-          <i class="fa-solid fa-circle"></i> Go Online
-        </button>
-      </div>
+      <button class="toggle-online-btn offline" id="toggleOnlineBtn">
+        <i class="fa-solid fa-circle"></i> Go Online
+      </button>
     </div>
 
     <!-- Map Container -->
@@ -531,15 +757,10 @@
         </button>
       </div>
       <div id="requestsContainer">
-        <div style="text-align: center; padding: 30px 20px; color: #999">
-          <i
-            class="fa-solid fa-inbox"
-            style="font-size: 48px; margin-bottom: 15px; display: block"
-          ></i>
-          <p style="font-size: 14px; font-weight: 600">No incoming requests</p>
-          <p style="font-size: 12px; margin-top: 5px">
-            Waiting for customers...
-          </p>
+        <div class="empty-state">
+          <i class="fa-solid fa-inbox"></i>
+          <p>No incoming requests</p>
+          <p>Waiting for customers...</p>
         </div>
       </div>
     </div>
@@ -554,18 +775,23 @@
     <div class="rider-bottom-nav">
       <a href="#" class="rider-nav-item" id="statsNav" title="Stats">
         <i class="fa-solid fa-chart-line"></i>
+        <span>Stats</span>
       </a>
       <a href="#" class="rider-nav-item" id="messageNav" title="Messages">
         <i class="fa-regular fa-comments"></i>
+        <span>Chat</span>
       </a>
       <a href="#" class="rider-nav-item active" id="mapNav" title="Map">
         <i class="fa-solid fa-map"></i>
+        <span>Map</span>
       </a>
       <a href="#" class="rider-nav-item" id="profileNav" title="Profile">
         <i class="fa-solid fa-user"></i>
+        <span>Profile</span>
       </a>
       <a href="#" class="rider-nav-item" id="logoutNav" title="Logout">
         <i class="fa-solid fa-right-from-bracket"></i>
+        <span>Logout</span>
       </a>
     </div>
 

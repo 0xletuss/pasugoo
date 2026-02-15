@@ -208,11 +208,11 @@ class RiderRequestHandler {
     // Show empty state
     if (requests.length === 0) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px; color: #999;">
-          <i class="fa-solid fa-inbox" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-          <p style="font-size: 14px; font-weight: 600;">No pending requests</p>
-          <p style="font-size: 12px; margin-top: 5px;">You'll be notified when customers select you</p>
-          <p style="font-size: 11px; margin-top: 10px; color: #28a745;">
+        <div class="empty-state">
+          <i class="fa-solid fa-inbox"></i>
+          <p>No pending requests</p>
+          <p>You'll be notified when customers select you</p>
+          <p style="color: #28a745; margin-top: 8px;">
             <i class="fa-solid fa-circle-check"></i> Polling active
           </p>
         </div>
@@ -237,13 +237,11 @@ class RiderRequestHandler {
     if (!container) return;
 
     container.innerHTML = `
-      <div style="text-align: center; padding: 40px 20px; color: #dc3545;">
-        <i class="fa-solid fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-        <p style="font-size: 14px; font-weight: 600;">Error Loading Requests</p>
-        <p style="font-size: 12px; margin-top: 5px;">${message}</p>
-        <p style="font-size: 11px; margin-top: 10px; color: #666;">
-          Retrying automatically...
-        </p>
+      <div class="empty-state" style="color: #dc3545;">
+        <i class="fa-solid fa-exclamation-triangle"></i>
+        <p>Error Loading Requests</p>
+        <p>${message}</p>
+        <p style="color: #666; margin-top: 8px;">Retrying automatically...</p>
       </div>
     `;
   }
