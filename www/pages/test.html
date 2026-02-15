@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Map-Rider Diagnostic</title>
+    <style>
+      body {
+        font-family: "Courier New", monospace;
+        padding: 20px;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      .card {
+        background: #2d2d2d;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border-left: 4px solid #4285f4;
+      }
+      .card.error {
+        border-left-color: #dc3545;
+      }
+      .card.success {
+        border-left-color: #28a745;
+      }
+      h2 {
+        color: #4285f4;
+        margin-top: 0;
+      }
+      button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 13px;
+      }
+      button:hover {
+        background: #357ae8;
+      }
+      pre {
+        background: #1e1e1e;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+        font-size: 12px;
+      }
+      .status {
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 5px;
+        background: #3d3d3d;
+      }
+      .status.ok {
+        background: #1a3a1a;
+        color: #28a745;
+      }
+      .status.bad {
+        background: #3a1a1a;
+        color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔧 map-rider.js Diagnostic</h1>
+
+    <div class="card">
+      <h2>1️⃣ Environment Check</h2>
+      <button onclick="checkEnvironment()">Check Environment</button>
+      <div id="envOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>2️⃣ Test RiderMapController</h2>
+      <button onclick="testController()">Test Controller Creation</button>
+      <div id="controllerOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>3️⃣ Test Map Element</h2>
+      <button onclick="testMapElement()">Check Map Element</button>
+      <div id="mapOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>4️⃣ Test Leaflet</h2>
+      <button onclick="testLeaflet()">Check Leaflet Library</button>
+      <div id="leafletOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>5️⃣ Test Window.riderMap</h2>
+      <button onclick="testGlobalRiderMap()">Check window.riderMap</button>
+      <div id="globalOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>6️⃣ Test startTracking()</h2>
+      <button onclick="testStartTracking()">Simulate "Go Online"</button>
+      <div id="trackingOutput"></div>
+    </div>
+
+    <script>
+      function log(message, containerId, isError = false) {
+        const container = document.getElementById(containerId);
+        const div = document.createElement("div");
+        div.className = `status ${isError ? "bad" : "ok"}`;
+        div.textContent = message;
+        container.appendChild(div);
+      }
+
+      function checkEnvironment() {
+        const output = document.getElementById("envOutput");
+        output.innerHTML = "";
+
+        const token = localStorage.getItem("access_token");
+        const userData = localStorage.getItem("user_data");
+
+        log(
+          `✅ Token: ${token ? "Found (" + token.length + " chars)" : "❌ NOT FOUND"}`,
+          "envOutput",
+          !token,
+        );
+
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            log(
+              `✅ User: ${user.full_name} (${user.user_type})`,
+              "envOutput",
+              false,
+            );
+          } catch (e) {
+            log(`❌ User data parse error: ${e.message}`, "envOutput", true);
+          }
+        } else {
+          log(`❌ User data: NOT FOUND`, "envOutput", true);
+        }
+
+        log(
+          `✅ Leaflet: ${window.L ? "Loaded" : "❌ NOT LOADED"}`,
+          "envOutput",
+          !window.L,
+        );
+      }
+
+      function testController() {
+        const output = document.getElementById("controllerOutput");
+        output.innerHTML = "";
+
+        try {
+          if (typeof RiderMapController === "undefined") {
+            log(
+              `❌ RiderMapController class not defined!`,
+              "controllerOutput",
+              true,
+            );
+            return;
+          }
+          log(`✅ RiderMapController class exists`, "controllerOutput", false);
+
+          const controller = new RiderMapController();
+          log(`✅ Controller instance created`, "controllerOutput", false);
+          log(
+            `✅ isAuthenticated: ${controller.isAuthenticated}`,
+            "controllerOutput",
+            !controller.isAuthenticated,
+          );
+          log(
+            `✅ isTracking: ${controller.isTracking}`,
+            "controllerOutput",
+            false,
+          );
+          log(`✅ isOnline: ${controller.isOnline}`, "controllerOutput", false);
+        } catch (e) {
+          log(
+            `❌ Error creating controller: ${e.message}`,
+            "controllerOutput",
+            true,
+          );
+          log(`Stack: ${e.stack}`, "controllerOutput", true);
+        }
+      }
+
+      function testMapElement() {
+        const output = document.getElementById("mapOutput");
+        output.innerHTML = "";
+
+        const mapEl = document.getElementById("riderMap");
+        log(
+          `✅ #riderMap element: ${mapEl ? "EXISTS" : "❌ NOT FOUND"}`,
+          "mapOutput",
+          !mapEl,
+        );
+
+        if (mapEl) {
+          log(`✅ Width: ${mapEl.offsetWidth}px`, "mapOutput", false);
+          log(`✅ Height: ${mapEl.offsetHeight}px`, "mapOutput", false);
+          log(
+            `Display: ${window.getComputedStyle(mapEl).display}`,
+            "mapOutput",
+            false,
+          );
+        }
+      }
+
+      function testLeaflet() {
+        const output = document.getElementById("leafletOutput");
+        output.innerHTML = "";
+
+        log(
+          `✅ window.L: ${window.L ? "EXISTS" : "❌ NOT FOUND"}`,
+          "leafletOutput",
+          !window.L,
+        );
+
+        if (window.L) {
+          log(
+            `✅ L.map: ${L.map ? "Available" : "❌ NOT AVAILABLE"}`,
+            "leafletOutput",
+            !L.map,
+          );
+          log(
+            `✅ L.marker: ${L.marker ? "Available" : "❌ NOT AVAILABLE"}`,
+            "leafletOutput",
+            !L.marker,
+          );
+          log(
+            `✅ L.tileLayer: ${L.tileLayer ? "Available" : "❌ NOT AVAILABLE"}`,
+            "leafletOutput",
+            !L.tileLayer,
+          );
+          log(
+            `✅ L.circle: ${L.circle ? "Available" : "❌ NOT AVAILABLE"}`,
+            "leafletOutput",
+            !L.circle,
+          );
+        }
+      }
+
+      function testGlobalRiderMap() {
+        const output = document.getElementById("globalOutput");
+        output.innerHTML = "";
+
+        log(
+          `✅ window.riderMap: ${window.riderMap ? "EXISTS" : "❌ NOT FOUND"}`,
+          "globalOutput",
+          !window.riderMap,
+        );
+
+        if (window.riderMap) {
+          log(
+            `✅ riderMap.map: ${window.riderMap.map ? "EXISTS" : "❌ NOT FOUND"}`,
+            "globalOutput",
+            !window.riderMap.map,
+          );
+          log(
+            `✅ riderMap.startTracking: ${typeof window.riderMap.startTracking === "function" ? "Function" : "❌ NOT A FUNCTION"}`,
+            "globalOutput",
+            typeof window.riderMap.startTracking !== "function",
+          );
+          log(
+            `✅ riderMap.stopTracking: ${typeof window.riderMap.stopTracking === "function" ? "Function" : "❌ NOT A FUNCTION"}`,
+            "globalOutput",
+            typeof window.riderMap.stopTracking !== "function",
+          );
+        }
+      }
+
+      function testStartTracking() {
+        const output = document.getElementById("trackingOutput");
+        output.innerHTML = "";
+
+        try {
+          if (!window.riderMap) {
+            log(`❌ window.riderMap not found!`, "trackingOutput", true);
+            return;
+          }
+
+          log(`✅ Calling startTracking()...`, "trackingOutput", false);
+          window.riderMap.startTracking();
+          log(
+            `✅ startTracking() completed without error`,
+            "trackingOutput",
+            false,
+          );
+          log(
+            `✅ isTracking: ${window.riderMap.isTracking}`,
+            "trackingOutput",
+            false,
+          );
+          log(
+            `✅ isOnline: ${window.riderMap.isOnline}`,
+            "trackingOutput",
+            false,
+          );
+        } catch (e) {
+          log(
+            `❌ Error in startTracking(): ${e.message}`,
+            "trackingOutput",
+            true,
+          );
+          log(`Stack: ${e.stack}`, "trackingOutput", true);
+        }
+      }
+
+      window.addEventListener("load", () => {
+        console.log("Diagnostic page loaded");
+        console.log("RiderMapController:", typeof RiderMapController);
+        console.log("window.riderMap:", window.riderMap);
+      });
+    </script>
+  </body>
+</html>

@@ -271,11 +271,11 @@ class PasugoMap {
     const riderIcon = L.divIcon({
       className: "custom-rider-marker",
       html: `
-        <div class="rider-marker">
-          <i class="fa-solid fa-motorcycle"></i>
-          <span class="rider-distance">${rider.distance_km ? rider.distance_km.toFixed(1) + "km" : ""}</span>
-        </div>
-      `,
+          <div class="rider-marker">
+            <i class="fa-solid fa-motorcycle"></i>
+            <span class="rider-distance">${rider.distance_km ? rider.distance_km.toFixed(1) + "km" : ""}</span>
+          </div>
+        `,
       iconSize: [80, 40],
       iconAnchor: [40, 20],
     });
@@ -285,20 +285,20 @@ class PasugoMap {
     }).addTo(this.map);
 
     const popupContent = `
-      <div style="text-align: center; min-width: 150px;">
-        <strong>${rider.full_name}</strong><br>
-        <span style="font-size: 12px; color: #666;">
-          ${rider.vehicle_type} - ${rider.license_plate}
-        </span><br>
-        <span style="font-size: 12px;">
-          ⭐ ${rider.rating ? rider.rating.toFixed(1) : "N/A"} 
-          (${rider.total_tasks_completed} rides)
-        </span><br>
-        <span style="font-size: 11px; color: ${rider.availability_status === "available" ? "green" : "orange"};">
-          ${rider.availability_status.toUpperCase()}
-        </span>
-      </div>
-    `;
+        <div style="text-align: center; min-width: 150px;">
+          <strong>${rider.full_name}</strong><br>
+          <span style="font-size: 12px; color: #666;">
+            ${rider.vehicle_type} - ${rider.license_plate}
+          </span><br>
+          <span style="font-size: 12px;">
+            ⭐ ${rider.rating ? rider.rating.toFixed(1) : "N/A"} 
+            (${rider.total_tasks_completed} rides)
+          </span><br>
+          <span style="font-size: 11px; color: ${rider.availability_status === "available" ? "green" : "orange"};">
+            ${rider.availability_status.toUpperCase()}
+          </span>
+        </div>
+      `;
 
     marker.bindPopup(popupContent);
     this.riderMarkers.push(marker);
@@ -321,10 +321,10 @@ class PasugoMap {
     const userIcon = L.divIcon({
       className: "custom-user-marker",
       html: `
-        <div class="user-location-marker">
-          <i class="fa-solid fa-user"></i>
-        </div>
-      `,
+          <div class="user-location-marker">
+            <i class="fa-solid fa-user"></i>
+          </div>
+        `,
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });

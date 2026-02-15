@@ -1,0 +1,922 @@
+// rider-chat.js - Rider Chat Manager with WebSocket
+// ─────────────────────────────────────────────────────────────
+// Handles real-time chat between rider and customer
+
+const PASUGO_WS_BASE = "wss://pasugo.onrender.com";
+const PASUGO_API_BASE = "https://pasugo.onrender.com";
+
+class RiderChatManager {
+  constructor() {
+    this.ws = null;
+    this.conversationId = null;
+    this.requestId = null;
+    this.customerId = null;
+    this.customerName = "";
+    this.isConnected = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnects = 5;
+    this.pingInterval = null;
+    this.typingTimeout = null;
+    this.messageQueue = [];
+    this.isOpen = false;
+    this.unreadCount = 0;
+
+    // DOM elements (will be set when panel is created)
+    this.chatPanel = null;
+    this.chatContainer = null;
+    this.chatInput = null;
+    this.customerStatus = null;
+
+    console.log("🔧 RiderChatManager initialized");
+  }
+
+  // ── Initialize chat panel UI ─────────────────────────────
+  initUI() {
+    // Inject CSS styles
+    this.injectStyles();
+
+    // Create chat panel HTML
+    this.createChatPanel();
+
+    // Set up event listeners
+    this.setupEventListeners();
+
+    // Restore active request if any
+    this.restoreActiveRequest();
+
+    console.log("✅ Rider chat UI initialized");
+  }
+
+  // ── Restore active request on page reload ────────────────
+  async restoreActiveRequest() {
+    const savedRequestId = localStorage.getItem("active_request_id");
+    const savedCustomerName = localStorage.getItem("active_request_customer");
+
+    if (!savedRequestId) return;
+
+    console.log(`🔄 [RiderChat] Restoring request ${savedRequestId}...`);
+
+    try {
+      // Verify the request is still active
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${savedRequestId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (!res.ok) {
+        console.log("📋 Request no longer exists, clearing state");
+        this.clearActiveRequest();
+        return;
+      }
+
+      const data = await res.json();
+      const status = data.data?.status?.toLowerCase();
+
+      // Check if request is completed or cancelled
+      if (status === "completed" || status === "cancelled") {
+        console.log(`📋 Request is ${status}, clearing state`);
+        this.clearActiveRequest();
+        return;
+      }
+
+      // Restore chat connection
+      this.setCustomerInfo(savedCustomerName || "Customer");
+      await this.connect(parseInt(savedRequestId, 10));
+    } catch (e) {
+      console.error("Failed to restore request:", e);
+    }
+  }
+
+  clearActiveRequest() {
+    localStorage.removeItem("active_request_id");
+    localStorage.removeItem("active_request_customer");
+    this.hideActiveTaskBanner();
+  }
+
+  injectStyles() {
+    if (document.getElementById("rider-chat-styles")) return;
+
+    const style = document.createElement("style");
+    style.id = "rider-chat-styles";
+    style.textContent = `
+      /* Rider Chat Panel */
+      .rider-chat-panel {
+        position: fixed;
+        bottom: 70px;
+        left: 0;
+        right: 0;
+        height: 60vh;
+        background: #fff;
+        border-top-left-radius: 25px;
+        border-top-right-radius: 25px;
+        box-shadow: 0 -5px 30px rgba(0,0,0,0.2);
+        z-index: 500;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+      }
+
+      .rider-chat-panel.open {
+        transform: translateY(0);
+      }
+
+      .rider-chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+        background: var(--primary-black);
+        color: white;
+        border-radius: 25px 25px 0 0;
+      }
+
+      .rider-chat-header .customer-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .rider-chat-header .customer-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary-yellow);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: var(--primary-black);
+      }
+
+      .rider-chat-header .customer-name {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .rider-chat-header .customer-status {
+        font-size: 11px;
+        opacity: 0.8;
+      }
+
+      .rider-chat-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+      }
+
+      .rider-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        background: #f8f9fa;
+      }
+
+      .rider-chat-input-area {
+        display: flex;
+        gap: 10px;
+        padding: 12px 15px;
+        background: white;
+        border-top: 1px solid #eee;
+      }
+
+      .rider-chat-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #eee;
+        border-radius: 25px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .rider-chat-input:focus {
+        border-color: var(--primary-yellow);
+      }
+
+      .rider-chat-send {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--primary-yellow);
+        border: none;
+        color: var(--primary-black);
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+      }
+
+      .rider-chat-send:hover {
+        transform: scale(1.05);
+      }
+
+      .rider-chat-send:active {
+        transform: scale(0.95);
+      }
+
+      /* Message bubbles */
+      .rider-message-group {
+        display: flex;
+        margin-bottom: 10px;
+      }
+
+      .rider-message-group.rider {
+        justify-content: flex-end;
+      }
+
+      .rider-message-group.customer {
+        justify-content: flex-start;
+      }
+
+      .rider-message-bubble {
+        max-width: 75%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.4;
+        position: relative;
+      }
+
+      .rider-message-bubble.rider {
+        background: var(--primary-yellow);
+        color: var(--primary-black);
+        border-bottom-right-radius: 6px;
+      }
+
+      .rider-message-bubble.customer {
+        background: white;
+        color: var(--primary-black);
+        border-bottom-left-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .rider-msg-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        margin-left: 6px;
+      }
+
+      .rider-msg-time {
+        font-size: 10px;
+        opacity: 0.55;
+        white-space: nowrap;
+      }
+
+      .rider-msg-status {
+        font-size: 11px;
+        opacity: 0.65;
+      }
+
+      .rider-chat-system-msg {
+        text-align: center;
+        margin: 8px auto;
+        padding: 6px 14px;
+        font-size: 12px;
+        color: #999;
+        background: rgba(0,0,0,0.05);
+        border-radius: 12px;
+        max-width: 75%;
+      }
+
+      /* Typing indicator */
+      .rider-typing-dots {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .rider-typing-dots span {
+        width: 7px;
+        height: 7px;
+        background: #999;
+        border-radius: 50%;
+        animation: riderTypeBounce 1.2s infinite ease-in-out;
+      }
+
+      .rider-typing-dots span:nth-child(2) { animation-delay: .2s; }
+      .rider-typing-dots span:nth-child(3) { animation-delay: .4s; }
+
+      @keyframes riderTypeBounce {
+        0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+        30% { transform: translateY(-6px); opacity: 1; }
+      }
+
+      /* Chat badge */
+      .chat-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        min-width: 18px;
+        height: 18px;
+        background: #dc3545;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+      }
+
+      .chat-badge.hidden {
+        display: none;
+      }
+
+      /* Active task info */
+      .active-task-banner {
+        position: fixed;
+        top: 65px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--primary-yellow);
+        color: var(--primary-black);
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        z-index: 40;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .active-task-banner:hover {
+        transform: translateX(-50%) scale(1.02);
+      }
+
+      .active-task-banner.visible {
+        display: flex;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  createChatPanel() {
+    // Create chat panel container
+    const panel = document.createElement("div");
+    panel.className = "rider-chat-panel";
+    panel.id = "riderChatPanel";
+    panel.innerHTML = `
+      <div class="rider-chat-header">
+        <div class="customer-info">
+          <div class="customer-avatar" id="chatCustomerAvatar">C</div>
+          <div>
+            <div class="customer-name" id="chatCustomerName">Customer</div>
+            <div class="customer-status" id="chatCustomerStatus">Connecting...</div>
+          </div>
+        </div>
+        <button class="rider-chat-close" id="closeChatBtn">
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+      </div>
+      <div class="rider-chat-messages" id="riderChatMessages">
+        <div class="rider-chat-system-msg">Loading messages...</div>
+      </div>
+      <div class="rider-chat-input-area">
+        <input type="text" class="rider-chat-input" id="riderChatInput" 
+               placeholder="Type a message..." autocomplete="off">
+        <button class="rider-chat-send" id="riderChatSend">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    // Create active task banner
+    const banner = document.createElement("div");
+    banner.className = "active-task-banner";
+    banner.id = "activeTaskBanner";
+    banner.innerHTML = `
+      <i class="fa-solid fa-shopping-bag"></i>
+      <span id="activeTaskText">Active Task</span>
+      <i class="fa-solid fa-comment-dots"></i>
+    `;
+    document.body.appendChild(banner);
+
+    // Store references
+    this.chatPanel = document.getElementById("riderChatPanel");
+    this.chatContainer = document.getElementById("riderChatMessages");
+    this.chatInput = document.getElementById("riderChatInput");
+    this.customerStatus = document.getElementById("chatCustomerStatus");
+  }
+
+  setupEventListeners() {
+    // Close button
+    const closeBtn = document.getElementById("closeChatBtn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.closeChat());
+    }
+
+    // Send button
+    const sendBtn = document.getElementById("riderChatSend");
+    if (sendBtn) {
+      sendBtn.addEventListener("click", () => this.sendMessage());
+    }
+
+    // Enter key
+    const input = document.getElementById("riderChatInput");
+    if (input) {
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") this.sendMessage();
+      });
+      input.addEventListener("input", () => this.startTyping());
+    }
+
+    // Message nav click
+    const messageNav = document.getElementById("messageNav");
+    if (messageNav) {
+      messageNav.style.position = "relative";
+      messageNav.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (this.requestId) {
+          this.toggleChat();
+        } else {
+          alert("No active request to chat about.");
+        }
+      });
+    }
+
+    // Active task banner click
+    const banner = document.getElementById("activeTaskBanner");
+    if (banner) {
+      banner.addEventListener("click", () => this.openChat());
+    }
+  }
+
+  // ── Connect to conversation ──────────────────────────────
+  async connect(requestId) {
+    this.requestId = requestId;
+    console.log(`📱 [RiderChat] Connecting to request ${requestId}...`);
+
+    try {
+      const token = localStorage.getItem("access_token");
+
+      // Get or create conversation
+      const res = await fetch(`${PASUGO_API_BASE}/api/messages/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ request_id: requestId }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to get conversation");
+      }
+
+      const data = await res.json();
+      this.conversationId = data.data.conversation_id;
+      console.log(`✅ [RiderChat] Got conversation ${this.conversationId}`);
+
+      // Load history and open WebSocket
+      await this.loadHistory();
+      this.openWS();
+
+      // Show active task banner
+      this.showActiveTaskBanner();
+
+      // Update badge on message nav
+      this.updateChatBadge();
+    } catch (err) {
+      console.error("[RiderChat] connect error:", err);
+      this.showSystem("Could not connect to chat: " + err.message);
+    }
+  }
+
+  openWS() {
+    const token = localStorage.getItem("access_token");
+    if (!token || !this.conversationId) return;
+
+    const url = `${PASUGO_WS_BASE}/api/messages/ws/${this.conversationId}?token=${token}`;
+    console.log(`🔌 [RiderChat] Opening WebSocket...`);
+
+    this.ws = new WebSocket(url);
+
+    this.ws.onopen = () => {
+      console.log("✅ [RiderChat] WebSocket connected");
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+      this.setStatus("Online", "#4caf50");
+
+      // Flush queued messages
+      while (this.messageQueue.length) {
+        this.ws.send(JSON.stringify(this.messageQueue.shift()));
+      }
+
+      // Keepalive ping
+      this.pingInterval = setInterval(() => {
+        if (this.isConnected) this.ws.send(JSON.stringify({ event: "ping" }));
+      }, 30000);
+    };
+
+    this.ws.onmessage = (e) => {
+      try {
+        this.handleEvent(JSON.parse(e.data));
+      } catch (err) {
+        console.error("[RiderChat] parse error:", err);
+      }
+    };
+
+    this.ws.onclose = (e) => {
+      console.log("[RiderChat] WS closed:", e.code);
+      this.isConnected = false;
+      clearInterval(this.pingInterval);
+      if (e.code !== 1000 && e.code !== 4001 && e.code !== 4003) {
+        this.scheduleReconnect();
+      }
+    };
+
+    this.ws.onerror = (e) => console.error("[RiderChat] WS error:", e);
+  }
+
+  scheduleReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnects) {
+      this.setStatus("Connection lost", "#dc3545");
+      return;
+    }
+    this.reconnectAttempts++;
+    this.setStatus("Reconnecting...", "#ff9800");
+    setTimeout(() => this.openWS(), 2000 * this.reconnectAttempts);
+  }
+
+  disconnect() {
+    console.log("🔌 [RiderChat] Disconnecting...");
+    clearInterval(this.pingInterval);
+    clearTimeout(this.typingTimeout);
+    if (this.ws) {
+      this.ws.close(1000);
+      this.ws = null;
+    }
+    this.isConnected = false;
+    this.conversationId = null;
+    this.requestId = null;
+    this.reconnectAttempts = 0;
+    this.messageQueue = [];
+    this.clearActiveRequest();
+    this.closeChat();
+  }
+
+  // ── Send message ─────────────────────────────────────────
+  sendMessage() {
+    const content = this.chatInput?.value?.trim();
+    if (!content) return;
+
+    const payload = {
+      event: "send_message",
+      content: content,
+      message_type: "text",
+    };
+
+    if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(payload));
+    } else {
+      this.messageQueue.push(payload);
+      this.scheduleReconnect();
+    }
+
+    this.chatInput.value = "";
+    this.stopTyping();
+  }
+
+  // ── Typing indicators ────────────────────────────────────
+  startTyping() {
+    if (!this.isConnected) return;
+    this.ws.send(JSON.stringify({ event: "typing_start" }));
+    clearTimeout(this.typingTimeout);
+    this.typingTimeout = setTimeout(() => this.stopTyping(), 3000);
+  }
+
+  stopTyping() {
+    clearTimeout(this.typingTimeout);
+    this.typingTimeout = null;
+    if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ event: "typing_stop" }));
+    }
+  }
+
+  // ── Mark messages read ───────────────────────────────────
+  markRead(ids) {
+    if (!this.isConnected || !ids?.length) return;
+    this.ws.send(JSON.stringify({ event: "mark_read", message_ids: ids }));
+  }
+
+  // ── Load chat history ────────────────────────────────────
+  async loadHistory() {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/messages/conversations/${this.conversationId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const messages = data.data?.messages || [];
+
+      this.chatContainer.innerHTML = "";
+      if (!messages.length) {
+        this.showSystem("Chat with your customer! 👋");
+      } else {
+        messages.forEach((m) => this.renderMessage(m));
+        this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+      }
+
+      // Mark unread
+      const myId = this.getMyId();
+      const unread = messages
+        .filter((m) => m.sender_id !== myId)
+        .map((m) => m.message_id);
+      if (unread.length) this.markRead(unread);
+    } catch (err) {
+      console.error("[RiderChat] loadHistory error:", err);
+    }
+  }
+
+  // ── Handle WebSocket events ──────────────────────────────
+  handleEvent(data) {
+    switch (data.event) {
+      case "new_message":
+        this.renderMessage(data);
+        if (data.sender_id !== this.getMyId()) {
+          this.unreadCount++;
+          this.updateChatBadge();
+          if (!this.isOpen) {
+            this.playNotificationSound();
+          }
+        }
+        this.markRead([data.message_id]);
+        break;
+
+      case "user_typing":
+        this.handleTypingIndicator(data);
+        break;
+
+      case "messages_read":
+        this.updateReadReceipts(data.message_ids);
+        break;
+
+      case "user_joined":
+        if (data.user_id !== this.getMyId()) {
+          this.setStatus("Online", "#4caf50");
+        }
+        break;
+
+      case "user_left":
+        if (data.user_id !== this.getMyId()) {
+          this.setStatus("Offline", "#888");
+        }
+        break;
+
+      case "pong":
+        break;
+
+      case "error":
+        console.error("[RiderChat] server error:", data.message);
+        break;
+    }
+  }
+
+  // ── Render message bubble ────────────────────────────────
+  renderMessage(msg) {
+    if (!this.chatContainer) return;
+
+    // Remove typing bubble
+    this.chatContainer.querySelector(".rider-typing-bubble")?.remove();
+
+    if (msg.message_type === "system") {
+      this.showSystem(msg.content);
+      return;
+    }
+
+    const myId = this.getMyId();
+    const isOwn = msg.sender_id === myId;
+    const time = msg.sent_at
+      ? new Date(msg.sent_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
+
+    const group = document.createElement("div");
+    group.className = `rider-message-group ${isOwn ? "rider" : "customer"}`;
+    group.dataset.msgId = msg.message_id;
+    group.innerHTML = `
+      <div class="rider-message-bubble ${isOwn ? "rider" : "customer"}">
+        ${this.escape(msg.content || "")}
+        <span class="rider-msg-meta">
+          <span class="rider-msg-time">${time}</span>
+          ${isOwn ? `<span class="rider-msg-status" data-id="${msg.message_id}">✓</span>` : ""}
+        </span>
+      </div>
+    `;
+
+    this.chatContainer.appendChild(group);
+    this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+  }
+
+  showSystem(text) {
+    if (!this.chatContainer) return;
+    const el = document.createElement("div");
+    el.className = "rider-chat-system-msg";
+    el.textContent = text;
+    this.chatContainer.appendChild(el);
+    this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+  }
+
+  // ── Typing indicator ─────────────────────────────────────
+  handleTypingIndicator(data) {
+    if (!this.chatContainer) return;
+    const existing = this.chatContainer.querySelector(".rider-typing-bubble");
+
+    if (data.is_typing && data.user_id !== this.getMyId()) {
+      if (!existing) {
+        const el = document.createElement("div");
+        el.className = "rider-message-group customer rider-typing-bubble";
+        el.innerHTML = `
+          <div class="rider-message-bubble customer" style="padding:10px 14px">
+            <span class="rider-typing-dots"><span></span><span></span><span></span></span>
+          </div>
+        `;
+        this.chatContainer.appendChild(el);
+        this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+      }
+      this.setStatus("typing...");
+      clearTimeout(this._typingStatusReset);
+      this._typingStatusReset = setTimeout(
+        () => this.setStatus("Online", "#4caf50"),
+        3500,
+      );
+    } else {
+      existing?.remove();
+    }
+  }
+
+  // ── Read receipts ────────────────────────────────────────
+  updateReadReceipts(ids) {
+    ids?.forEach((id) => {
+      const el = this.chatContainer?.querySelector(
+        `.rider-msg-status[data-id="${id}"]`,
+      );
+      if (el) {
+        el.textContent = "✓✓";
+        el.style.color = "#4fc3f7";
+      }
+    });
+  }
+
+  // ── UI Helpers ───────────────────────────────────────────
+  setStatus(text, color = "") {
+    if (this.customerStatus) {
+      this.customerStatus.textContent = text;
+      this.customerStatus.style.color = color;
+    }
+  }
+
+  setCustomerInfo(name) {
+    this.customerName = name;
+    const nameEl = document.getElementById("chatCustomerName");
+    const avatarEl = document.getElementById("chatCustomerAvatar");
+    if (nameEl) nameEl.textContent = name || "Customer";
+    if (avatarEl) avatarEl.textContent = (name || "C").charAt(0).toUpperCase();
+  }
+
+  openChat() {
+    if (this.chatPanel) {
+      this.chatPanel.classList.add("open");
+      this.isOpen = true;
+      this.unreadCount = 0;
+      this.updateChatBadge();
+      this.chatInput?.focus();
+    }
+  }
+
+  closeChat() {
+    if (this.chatPanel) {
+      this.chatPanel.classList.remove("open");
+      this.isOpen = false;
+    }
+  }
+
+  toggleChat() {
+    if (this.isOpen) {
+      this.closeChat();
+    } else {
+      this.openChat();
+    }
+  }
+
+  showActiveTaskBanner() {
+    const banner = document.getElementById("activeTaskBanner");
+    if (banner) {
+      banner.classList.add("visible");
+      const text = document.getElementById("activeTaskText");
+      if (text)
+        text.textContent = `Chat with ${this.customerName || "Customer"}`;
+    }
+  }
+
+  hideActiveTaskBanner() {
+    const banner = document.getElementById("activeTaskBanner");
+    if (banner) banner.classList.remove("visible");
+  }
+
+  updateChatBadge() {
+    const messageNav = document.getElementById("messageNav");
+    if (!messageNav) return;
+
+    let badge = messageNav.querySelector(".chat-badge");
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "chat-badge hidden";
+      messageNav.appendChild(badge);
+    }
+
+    if (this.unreadCount > 0 && !this.isOpen) {
+      badge.textContent = this.unreadCount > 9 ? "9+" : this.unreadCount;
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+  }
+
+  playNotificationSound() {
+    try {
+      const audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 600;
+      oscillator.type = "sine";
+
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.3,
+      );
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.warn("Could not play notification sound:", error);
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────
+  getMyId() {
+    try {
+      return JSON.parse(localStorage.getItem("user_data") || "{}").user_id;
+    } catch {
+      return null;
+    }
+  }
+
+  escape(text) {
+    const d = document.createElement("div");
+    d.appendChild(document.createTextNode(text));
+    return d.innerHTML;
+  }
+}
+
+// ── Create global instance ─────────────────────────────────
+window.riderChatManager = new RiderChatManager();
+
+// ── Initialize on DOM ready ────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  // Only init if on rider dashboard
+  const userData = localStorage.getItem("user_data");
+  if (!userData) return;
+
+  try {
+    const user = JSON.parse(userData);
+    const userType = String(user.user_type).toLowerCase();
+    if (userType === "rider" || userType.includes("rider")) {
+      window.riderChatManager.initUI();
+    }
+  } catch (e) {
+    console.error("Failed to init rider chat:", e);
+  }
+});
+
+console.log("✅ rider-chat.js loaded");

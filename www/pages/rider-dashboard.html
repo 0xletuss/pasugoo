@@ -9,166 +9,659 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <!-- Leaflet CSS for Maps -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
     <style>
-      .rider-dashboard {
-        padding: 20px;
-        max-width: 500px;
-        margin: 0 auto;
+      /* Rider Dashboard Specific Styles */
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
       }
 
-      .status-card {
-        background: white;
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      #riderMap {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
       }
 
-      .status-card h2 {
-        font-size: 18px;
-        margin-bottom: 15px;
-        color: var(--primary-black);
+      /* Status Header Bar */
+      .rider-status-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: var(--primary-black);
+        color: var(--white);
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 100;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .rider-status-bar .rider-info {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
       }
 
-      .notification-badge {
-        background: #dc3545;
-        color: white;
-        font-size: 11px;
-        font-weight: 700;
-        padding: 4px 8px;
-        border-radius: 12px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        min-width: 20px;
-      }
-
-      .logout-btn {
-        width: 100%;
-        padding: 16px;
-        background: #dc3545;
-        color: white;
+      .toggle-online-btn {
+        padding: 8px 16px;
+        background: var(--primary-yellow);
+        color: var(--primary-black);
         border: none;
-        border-radius: 50px;
-        font-size: 16px;
+        border-radius: 20px;
         font-weight: 600;
         cursor: pointer;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s;
-        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        font-size: 12px;
+        transition: all 0.3s;
+      }
+
+      .toggle-online-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3);
+      }
+
+      .toggle-online-btn.offline {
+        background: #dc3545;
+        color: white;
+      }
+
+      /* Incoming Requests Badge */
+      .requests-badge {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: var(--white);
+        padding: 12px 18px;
+        border-radius: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        z-index: 20;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .requests-badge:hover {
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        transform: translateY(-2px);
+      }
+
+      .request-count {
+        background: #dc3545;
+        color: white;
+        min-width: 28px;
+        height: 28px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        margin-top: 20px;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 0 8px;
+        animation: pulse-badge 2s infinite;
       }
 
-      .logout-btn:hover {
+      @keyframes pulse-badge {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      /* Map Controls */
+      .rider-map-controls {
+        position: fixed;
+        top: 80px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 20;
+      }
+
+      .map-control-btn {
+        width: 48px;
+        height: 48px;
+        background: var(--white);
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 18px;
+        color: var(--primary-black);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .map-control-btn:hover {
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+      }
+
+      .map-control-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Location Status Card */
+      .location-status-card {
+        position: fixed;
+        bottom: 100px;
+        left: 20px;
+        right: 20px;
+        background: var(--white);
+        padding: 16px;
+        border-radius: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        z-index: 20;
+      }
+
+      .location-status-card h3 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-dark);
+      }
+
+      .location-status-text {
+        font-size: 12px;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .location-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #28a745;
+      }
+
+      /* Incoming Requests Modal */
+      .requests-modal {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 70vh;
+        background: var(--white);
+        border-top-left-radius: 30px;
+        border-top-right-radius: 30px;
+        box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.2);
+        z-index: 25;
+        overflow-y: auto;
+        animation: slideUp 0.3s ease-out;
+        padding: 20px;
+        padding-bottom: 100px;
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(100%);
+        }
+        to {
+          transform: translateY(0);
+        }
+      }
+
+      .requests-modal.hidden {
+        display: none;
+      }
+
+      .requests-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .requests-modal-header h2 {
+        font-size: 18px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .close-requests-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--text-light);
+        cursor: pointer;
+        padding: 5px;
+      }
+
+      .close-requests-btn:hover {
+        color: var(--primary-black);
+      }
+
+      /* Request Card in Modal */
+      .request-card-compact {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 16px;
+        margin-bottom: 15px;
+        border-left: 4px solid var(--primary-yellow);
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .request-card-compact.urgent {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+      }
+
+      .request-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 10px;
+      }
+
+      .request-service-type {
+        font-weight: 600;
+        font-size: 15px;
+        color: var(--text-dark);
+        text-transform: capitalize;
+        margin-bottom: 4px;
+      }
+
+      .request-timer {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 10px;
+        background: var(--primary-yellow);
+        border-radius: 12px;
+        color: var(--primary-black);
+        white-space: nowrap;
+      }
+
+      .request-timer.urgent {
+        background: #dc3545;
+        color: white;
+        animation: pulse-timer 1s infinite;
+      }
+
+      @keyframes pulse-timer {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .request-customer {
+        font-size: 12px;
+        color: var(--text-light);
+        margin-bottom: 8px;
+      }
+
+      .request-items {
+        font-size: 12px;
+        color: var(--text-dark);
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        line-height: 1.4;
+      }
+
+      .request-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .request-action-btn {
+        padding: 12px;
+        border: none;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .request-accept-btn {
+        background: #28a745;
+        color: white;
+      }
+
+      .request-decline-btn {
+        background: #dc3545;
+        color: white;
+      }
+
+      .request-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .request-action-btn:active {
+        transform: translateY(0);
+      }
+
+      /* Bottom Navigation for Rider */
+      .rider-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: var(--primary-black);
+        border-top: 1px solid rgba(255, 193, 7, 0.2);
+        padding: 12px 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        z-index: 30;
+      }
+
+      .rider-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        text-decoration: none;
+        font-size: 20px;
+        padding: 12px;
+        opacity: 0.6;
+        transition: all 0.3s;
+      }
+
+      .rider-nav-item.active {
+        opacity: 1;
+        color: var(--primary-yellow);
+      }
+
+      .rider-nav-item:hover {
+        opacity: 0.8;
+      }
+
+      /* Loading State */
+      .location-loading-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 25px 35px;
+        border-radius: 20px;
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      }
+
+      .location-loading-overlay.active {
+        display: flex;
+      }
+
+      .spinner-ring {
+        width: 30px;
+        height: 30px;
+        border: 3px solid rgba(255, 193, 7, 0.2);
+        border-top: 3px solid var(--primary-yellow);
+        border-radius: 50%;
+        animation: rotation 1s linear infinite;
+      }
+
+      @keyframes rotation {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Leaflet adjustments */
+      .leaflet-container {
+        font-family: "Poppins", sans-serif;
+      }
+
+      .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+      }
+
+      .leaflet-popup-content {
+        margin: 10px;
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
-    <div class="page-wrapper">
-      <div class="top-header">
-        <div class="nav-bar">
-          <h1 style="font-size: 20px; margin: 0">
-            <i class="fa-solid fa-motorcycle"></i> Rider Dashboard
-          </h1>
+    <!-- Status Bar -->
+    <div class="rider-status-bar">
+      <div class="rider-info">
+        <i class="fa-solid fa-motorcycle"></i>
+        <div>
+          <div style="font-size: 12px; opacity: 0.8">Rider Dashboard</div>
+          <div style="font-size: 14px; font-weight: 600" id="riderName">
+            Loading...
+          </div>
         </div>
       </div>
+      <div>
+        <button class="toggle-online-btn offline" id="toggleOnlineBtn">
+          <i class="fa-solid fa-circle"></i> Go Online
+        </button>
+      </div>
+    </div>
 
-      <div class="main-container">
-        <div class="rider-dashboard">
-          <!-- Incoming Requests Section -->
-          <div class="status-card">
-            <h2>
-              <i class="fa-solid fa-bell"></i>
-              Incoming Requests
-              <span class="notification-badge" id="requestNotificationBadge"
-                >0</span
-              >
-            </h2>
-            <div id="requestsContainer">
-              <div style="text-align: center; padding: 40px 20px; color: #999">
-                <i
-                  class="fa-solid fa-spinner fa-spin"
-                  style="font-size: 48px; margin-bottom: 15px; display: block"
-                ></i>
-                <p style="font-size: 14px">Checking for requests...</p>
-              </div>
-            </div>
-          </div>
+    <!-- Map Container -->
+    <div id="riderMap"></div>
 
-          <!-- Location Status Section -->
-          <div class="status-card">
-            <h2><i class="fa-solid fa-location-dot"></i> Location Status</h2>
-            <div
-              id="locationStatus"
-              style="
-                padding: 15px;
-                background: #f3f4f6;
-                border-radius: 15px;
-                font-size: 14px;
-                font-weight: 600;
-              "
-            >
-              <i class="fa-solid fa-circle" style="color: #666"></i>
-              Starting location tracking...
-            </div>
-          </div>
+    <!-- Map Controls -->
+    <div class="rider-map-controls">
+      <button class="map-control-btn" id="recenterBtn" title="My Location">
+        <i class="fa-solid fa-location-crosshairs"></i>
+      </button>
+      <button class="map-control-btn" id="toggleMapLayerBtn" title="Map Layer">
+        <i class="fa-solid fa-layer-group"></i>
+      </button>
+    </div>
 
-          <!-- Logout Button -->
-          <button class="logout-btn" id="logoutBtn">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
-          </button>
+    <!-- Requests Badge -->
+    <div class="requests-badge" id="requestsBadge">
+      <i class="fa-solid fa-bell"></i>
+      <span>Incoming:</span>
+      <div class="request-count" id="requestCount">0</div>
+    </div>
+
+    <!-- Location Status Card -->
+    <div class="location-status-card">
+      <h3>📍 Your Location</h3>
+      <div class="location-status-text">
+        <div class="location-indicator"></div>
+        <span id="locationStatus">Acquiring GPS location...</span>
+      </div>
+    </div>
+
+    <!-- Incoming Requests Modal -->
+    <div class="requests-modal hidden" id="requestsModal">
+      <div class="requests-modal-header">
+        <h2>
+          <i class="fa-solid fa-bell" style="color: var(--primary-yellow)"></i>
+          Incoming Requests
+        </h2>
+        <button class="close-requests-btn" id="closeRequestsBtn">
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+      </div>
+      <div id="requestsContainer">
+        <div style="text-align: center; padding: 30px 20px; color: #999">
+          <i
+            class="fa-solid fa-inbox"
+            style="font-size: 48px; margin-bottom: 15px; display: block"
+          ></i>
+          <p style="font-size: 14px; font-weight: 600">No incoming requests</p>
+          <p style="font-size: 12px; margin-top: 5px">
+            Waiting for customers...
+          </p>
         </div>
       </div>
     </div>
 
+    <!-- Loading Overlay -->
+    <div class="location-loading-overlay" id="locationLoading">
+      <div class="spinner-ring"></div>
+      <span>Getting your location...</span>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="rider-bottom-nav">
+      <a href="#" class="rider-nav-item" id="statsNav" title="Stats">
+        <i class="fa-solid fa-chart-line"></i>
+      </a>
+      <a href="#" class="rider-nav-item" id="messageNav" title="Messages">
+        <i class="fa-regular fa-comments"></i>
+      </a>
+      <a href="#" class="rider-nav-item active" id="mapNav" title="Map">
+        <i class="fa-solid fa-map"></i>
+      </a>
+      <a href="#" class="rider-nav-item" id="profileNav" title="Profile">
+        <i class="fa-solid fa-user"></i>
+      </a>
+      <a href="#" class="rider-nav-item" id="logoutNav" title="Logout">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </a>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
     <!-- Auth Module -->
     <script src="../js/auth.js"></script>
 
-    <!-- API Handler -->
+    <!-- API Request Handler -->
     <script src="../js/api_request.js"></script>
 
-    <!-- Rider Location Tracker Script -->
+    <!-- Rider Map Controller -->
+    <script src="../js/map-rider.js"></script>
+
+    <!-- Rider Location Tracker -->
     <script src="../js/rider-map.js"></script>
 
-    <!-- NEW: Rider Request Handler -->
+    <!-- Rider Requests Handler -->
     <script src="../js/rider-requests.js"></script>
 
-    <!-- Logout handler -->
+    <!-- Rider Chat Manager -->
+    <script src="../js/rider-chat.js"></script>
+
+    <!-- Rider Dashboard Logic -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const logoutBtn = document.getElementById("logoutBtn");
+        const userData = localStorage.getItem("user_data");
 
-        if (logoutBtn) {
-          logoutBtn.addEventListener("click", (e) => {
+        if (!userData) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        const user = JSON.parse(userData);
+        const riderNameEl = document.getElementById("riderName");
+        if (riderNameEl) {
+          riderNameEl.textContent = user.full_name || "Rider";
+        }
+
+        // Toggle Online/Offline
+        const toggleOnlineBtn = document.getElementById("toggleOnlineBtn");
+        let isOnline = false;
+
+        if (toggleOnlineBtn) {
+          toggleOnlineBtn.addEventListener("click", () => {
+            isOnline = !isOnline;
+            updateOnlineStatus(isOnline);
+          });
+        }
+
+        function updateOnlineStatus(online) {
+          const btn = document.getElementById("toggleOnlineBtn");
+          if (online) {
+            btn.innerHTML =
+              '<i class="fa-solid fa-circle" style="color: #28a745;"></i> Go Offline';
+            btn.classList.remove("offline");
+            btn.style.background = "#28a745";
+            btn.style.color = "white";
+            if (window.riderTracker) {
+              window.riderTracker.init();
+            }
+          } else {
+            btn.innerHTML = '<i class="fa-solid fa-circle"></i> Go Online';
+            btn.classList.add("offline");
+            btn.style.background = "#dc3545";
+            btn.style.color = "white";
+            if (window.riderTracker) {
+              window.riderTracker.stop();
+            }
+          }
+        }
+
+        // Logout
+        const logoutNav = document.getElementById("logoutNav");
+        if (logoutNav) {
+          logoutNav.addEventListener("click", (e) => {
             e.preventDefault();
-
             if (
               confirm(
-                "Are you sure you want to logout? Location tracking will be stopped.",
+                "Are you sure you want to logout? Location tracking will stop.",
               )
             ) {
-              // Stop location tracking
               if (window.riderTracker) {
-                riderTracker.stop();
+                window.riderTracker.stop();
               }
-
-              // Stop request polling
               if (window.riderRequestHandler) {
-                riderRequestHandler.stop();
+                window.riderRequestHandler.stop();
               }
-
-              // Logout
+              if (window.riderMapController) {
+                window.riderMapController.stop();
+              }
               if (window.auth && window.auth.logout) {
                 window.auth.logout();
               } else {
@@ -179,6 +672,38 @@
             }
           });
         }
+
+        // Toggle requests modal
+        const requestsBadge = document.getElementById("requestsBadge");
+        const requestsModal = document.getElementById("requestsModal");
+        const closeRequestsBtn = document.getElementById("closeRequestsBtn");
+
+        if (requestsBadge) {
+          requestsBadge.addEventListener("click", () => {
+            requestsModal.classList.toggle("hidden");
+          });
+        }
+
+        if (closeRequestsBtn) {
+          closeRequestsBtn.addEventListener("click", () => {
+            requestsModal.classList.add("hidden");
+          });
+        }
+
+        // Navigation items
+        const navItems = document.querySelectorAll(".rider-nav-item");
+        navItems.forEach((item) => {
+          item.addEventListener("click", (e) => {
+            if (item.id === "logoutNav") return; // Let logout handler deal with it
+
+            e.preventDefault();
+            navItems.forEach((nav) => nav.classList.remove("active"));
+            item.classList.add("active");
+
+            // You can add navigation logic here
+            console.log("Navigated to:", item.id);
+          });
+        });
       });
     </script>
   </body>

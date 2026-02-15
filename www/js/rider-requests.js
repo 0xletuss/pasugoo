@@ -1,4 +1,4 @@
-// rider-requests.js - Rider Request Notification Handler (FINAL FIX)
+// rider-requests.js - Rider Request Notification Handler (UPDATED)
 // Polls for incoming requests and handles accept/decline
 
 class RiderRequestHandler {
@@ -55,7 +55,6 @@ class RiderRequestHandler {
     }
 
     // Step 4: Verify user is a rider
-    // FIXED: Handle both "rider" and "UserType.rider" formats
     const userType = String(user.user_type).toLowerCase();
     const isRider = userType === "rider" || userType.includes("rider");
 
@@ -94,7 +93,6 @@ class RiderRequestHandler {
     } catch (error) {
       console.error("❌ API test failed:", error);
       console.error("   The API might be down or unreachable");
-      // Continue anyway - polling will handle failures
     }
 
     // Step 7: Start polling
@@ -184,24 +182,27 @@ class RiderRequestHandler {
   updateUI(requests) {
     console.log("🎨 Updating UI with", requests.length, "requests");
 
-    const badge = document.getElementById("requestNotificationBadge");
+    // Update the requests badge (on main map view)
+    const requestsBadge = document.getElementById("requestsBadge");
+    const requestCount = document.getElementById("requestCount");
+
+    if (requestsBadge && requestCount) {
+      if (requests.length > 0) {
+        requestsBadge.style.display = "flex";
+        requestCount.textContent = requests.length;
+        console.log("   Badge updated:", requests.length);
+      } else {
+        requestsBadge.style.display = "none";
+      }
+    }
+
+    // Update the modal container
     const container = document.getElementById("requestsContainer");
 
     // Check if container exists
     if (!container) {
       console.error("❌ Element 'requestsContainer' not found in DOM!");
       return;
-    }
-
-    // Update notification badge
-    if (badge) {
-      if (requests.length > 0) {
-        badge.textContent = requests.length;
-        badge.style.display = "flex";
-        console.log("   Badge updated:", requests.length);
-      } else {
-        badge.style.display = "none";
-      }
     }
 
     // Show empty state
@@ -247,7 +248,7 @@ class RiderRequestHandler {
     `;
   }
 
-  // Create HTML for a request card
+  // Create HTML for a request card (compact version for modal)
   createRequestCard(req) {
     const minutes = Math.floor(req.time_remaining_seconds / 60);
     const seconds = req.time_remaining_seconds % 60;
@@ -266,166 +267,64 @@ class RiderRequestHandler {
     const isUrgent = req.time_remaining_seconds < 300; // Less than 5 minutes
 
     return `
-      <div class="request-card" style="
-        background: white;
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        border-left: 5px solid ${isUrgent ? "#dc3545" : "#ffc107"};
-        animation: slideIn 0.3s ease-out;
-      ">
-        <div style="display: flex; align-items: start; gap: 15px; margin-bottom: 15px;">
-          <div style="
-            width: 50px;
-            height: 50px;
-            background: ${isUrgent ? "#dc3545" : "#ffc107"};
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: ${isUrgent ? "white" : "black"};
-            flex-shrink: 0;
-          ">
-            <i class="fa-solid ${icon}"></i>
-          </div>
-          <div style="flex-grow: 1;">
-            <h3 style="margin: 0 0 5px 0; font-size: 16px; text-transform: capitalize;">
+      <div class="request-card-compact ${isUrgent ? "urgent" : ""}">
+        <div class="request-card-header">
+          <div>
+            <div class="request-service-type">
+              <i class="fa-solid ${icon}"></i> 
               ${req.service_type.replace("_", " ")}
-            </h3>
-            <p style="margin: 0; font-size: 13px; color: #666;">
+            </div>
+            <div class="request-customer">
               <i class="fa-solid fa-user"></i> ${req.customer_name}
-            </p>
+            </div>
             ${
               req.budget_limit
                 ? `
-              <p style="margin: 5px 0 0 0; font-size: 13px; color: #28a745; font-weight: 600;">
-                <i class="fa-solid fa-peso-sign"></i> Budget: ₱${req.budget_limit.toFixed(2)}
-              </p>
+              <div style="font-size: 12px; color: #28a745; font-weight: 600; margin-top: 4px;">
+                <i class="fa-solid fa-peso-sign"></i> ₱${req.budget_limit.toFixed(2)}
+              </div>
             `
                 : ""
             }
           </div>
-          <div style="text-align: right;">
-            <div style="
-              background: ${isUrgent ? "#dc3545" : "#ffc107"};
-              color: ${isUrgent ? "white" : "black"};
-              padding: 8px 12px;
-              border-radius: 20px;
-              font-size: 12px;
-              font-weight: 700;
-              ${isUrgent ? "animation: pulse 1s infinite;" : ""}
-            ">
-              <i class="fa-solid fa-clock"></i> ${timeRemaining}
-            </div>
+          <div class="request-timer ${isUrgent ? "urgent" : ""}">
+            <i class="fa-solid fa-clock"></i> ${timeRemaining}
           </div>
         </div>
 
-        <div style="
-          background: #f8f9fa;
-          padding: 12px;
-          border-radius: 12px;
-          margin-bottom: 15px;
-          font-size: 13px;
-        ">
-          <p style="margin: 0; color: #333; line-height: 1.5;">
-            ${
-              req.items_description.length > 100
-                ? req.items_description.substring(0, 100) + "..."
-                : req.items_description
-            }
-          </p>
+        <div class="request-items">
           ${
-            req.special_instructions
-              ? `
-            <p style="margin: 8px 0 0 0; color: #666; font-style: italic;">
-              <i class="fa-solid fa-note-sticky"></i> ${req.special_instructions}
-            </p>
-          `
-              : ""
+            req.items_description.length > 80
+              ? req.items_description.substring(0, 80) + "..."
+              : req.items_description
           }
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px;">
+        ${
+          req.special_instructions
+            ? `
+          <div style="font-size: 11px; color: #666; font-style: italic; margin-bottom: 10px;">
+            <i class="fa-solid fa-note-sticky"></i> ${req.special_instructions}
+          </div>
+        `
+            : ""
+        }
+
+        <div class="request-actions">
           <button 
             id="accept-${req.request_id}"
-            class="request-btn accept-btn"
-            style="
-              padding: 12px;
-              background: #28a745;
-              color: white;
-              border: none;
-              border-radius: 25px;
-              font-weight: 600;
-              cursor: pointer;
-              font-size: 14px;
-              transition: all 0.2s;
-            "
+            class="request-action-btn request-accept-btn"
           >
             <i class="fa-solid fa-check"></i> Accept
           </button>
           <button 
             id="decline-${req.request_id}"
-            class="request-btn decline-btn"
-            style="
-              padding: 12px;
-              background: #dc3545;
-              color: white;
-              border: none;
-              border-radius: 25px;
-              font-weight: 600;
-              cursor: pointer;
-              font-size: 14px;
-              transition: all 0.2s;
-            "
+            class="request-action-btn request-decline-btn"
           >
             <i class="fa-solid fa-times"></i> Decline
           </button>
-          <button 
-            id="view-${req.request_id}"
-            class="request-btn view-btn"
-            style="
-              padding: 12px 16px;
-              background: #f8f9fa;
-              color: #333;
-              border: none;
-              border-radius: 25px;
-              cursor: pointer;
-              transition: all 0.2s;
-            "
-          >
-            <i class="fa-solid fa-eye"></i>
-          </button>
         </div>
       </div>
-
-      <style>
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-
-        .request-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .request-btn:active {
-          transform: translateY(0);
-        }
-      </style>
     `;
   }
 
@@ -436,7 +335,6 @@ class RiderRequestHandler {
     requests.forEach((req) => {
       const acceptBtn = document.getElementById(`accept-${req.request_id}`);
       const declineBtn = document.getElementById(`decline-${req.request_id}`);
-      const viewBtn = document.getElementById(`view-${req.request_id}`);
 
       if (acceptBtn) {
         acceptBtn.addEventListener("click", () =>
@@ -447,9 +345,6 @@ class RiderRequestHandler {
         declineBtn.addEventListener("click", () =>
           this.declineRequest(req.request_id),
         );
-      }
-      if (viewBtn) {
-        viewBtn.addEventListener("click", () => this.viewRequestDetails(req));
       }
     });
 
@@ -473,7 +368,30 @@ class RiderRequestHandler {
 
       if (result.success) {
         console.log("✅ Request accepted successfully");
-        alert("✅ Request accepted! You can now start the task.");
+
+        // Get customer name from the request data
+        const req = this.currentRequests.find(
+          (r) => r.request_id === requestId,
+        );
+        const customerName = req?.customer_name || "Customer";
+
+        // Connect to chat
+        if (window.riderChatManager) {
+          console.log("💬 Connecting to chat...");
+          window.riderChatManager.setCustomerInfo(customerName);
+          await window.riderChatManager.connect(requestId);
+
+          // Store active request
+          localStorage.setItem("active_request_id", requestId);
+          localStorage.setItem("active_request_customer", customerName);
+        }
+
+        alert("✅ Request accepted! You can chat with the customer now.");
+
+        // Close the requests modal
+        const requestsModal = document.getElementById("requestsModal");
+        if (requestsModal) requestsModal.classList.add("hidden");
+
         // Refresh the list
         this.checkForRequests();
       } else {
@@ -510,31 +428,6 @@ class RiderRequestHandler {
       console.error("❌ Error declining request:", error);
       alert("❌ Error: " + error.message);
     }
-  }
-
-  // View request details
-  viewRequestDetails(req) {
-    const details = `
-REQUEST DETAILS
-═══════════════════════════════════════
-
-Service Type: ${req.service_type.toUpperCase()}
-Customer: ${req.customer_name}
-
-Items/Description:
-${req.items_description}
-
-Budget Limit: ${req.budget_limit ? "₱" + req.budget_limit.toFixed(2) : "No limit set"}
-
-Special Instructions:
-${req.special_instructions || "None"}
-
-Time Remaining: ${Math.floor(req.time_remaining_seconds / 60)} minutes ${req.time_remaining_seconds % 60} seconds
-
-Request ID: ${req.request_id}
-    `.trim();
-
-    alert(details);
   }
 
   // Play notification sound
@@ -613,7 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
       id: user.user_id || user.id,
     });
 
-    // FIXED: Handle both "rider" and "UserType.rider" formats
+    // Handle both "rider" and "UserType.rider" formats
     const userType = String(user.user_type).toLowerCase();
     const isRider = userType === "rider" || userType.includes("rider");
 
