@@ -388,6 +388,7 @@ class RequestModalController {
       budget: 0,
       instructions: "",
       location: null,
+      paymentMethod: "cod",
     };
     this.isWaiting = false;
     this.waitingTimer = 0;
@@ -584,6 +585,17 @@ class RequestModalController {
           this.deliveryAddress.value = "";
           this.formData.deliveryAddress = "";
         }
+      }),
+    );
+
+    // Payment method selector
+    this.paymentOptions = document.querySelectorAll(".payment-option");
+    this.paymentOptions.forEach((opt) =>
+      opt.addEventListener("click", () => {
+        this.paymentOptions.forEach((o) => o.classList.remove("selected"));
+        opt.classList.add("selected");
+        opt.querySelector('input[type="radio"]').checked = true;
+        this.formData.paymentMethod = opt.dataset.method;
       }),
     );
 
@@ -1080,6 +1092,7 @@ class RequestModalController {
         pickupLocation: this.formData.pickupLocation || null,
         deliveryAddress: this.formData.deliveryAddress || null,
         deliveryOption: this.formData.deliveryOption || null,
+        paymentMethod: this.formData.paymentMethod || "cod",
       });
 
       if (!result.success) {
@@ -1377,6 +1390,9 @@ class RequestModalController {
         } else if (status === "cancelled") {
           this.handleRequestCancelled();
         }
+
+        // Update payment panel whenever bill is ready
+        this.updateCustomerPaymentPanel(request);
       } catch (err) {
         console.error("[StatusPoll] Error:", err);
       }
@@ -1540,6 +1556,201 @@ class RequestModalController {
       </div>
     `;
     reminder.style.display = "block";
+  }
+
+  // ── Customer Payment Panel ────────────────────────────────
+  updateCustomerPaymentPanel(request) {
+    const panel = document.getElementById("customerPaymentPanel");
+    if (!panel) return;
+
+    const totalAmount = request.total_amount;
+    if (!totalAmount || totalAmount <= 0) {
+      panel.style.display = "none";
+      return;
+    }
+
+    panel.style.display = "block";
+
+    // Build bill breakdown
+    const breakdown = document.getElementById("billBreakdown");
+    if (breakdown) {
+      breakdown.innerHTML = `
+        <div class="bill-breakdown-card">
+          <div class="bill-row"><span>Item Cost</span><span>₱${parseFloat(request.item_cost || 0).toFixed(2)}</span></div>
+          <div class="bill-row"><span>Service Fee</span><span>₱${parseFloat(request.service_fee || 0).toFixed(2)}</span></div>
+          <div class="bill-row total"><span>Total</span><span>₱${parseFloat(totalAmount).toFixed(2)}</span></div>
+        </div>
+      `;
+    }
+
+    const paymentMethod = request.payment_method || "cod";
+    const paymentStatus = request.payment_status || "pending";
+    const gcashForm = document.getElementById("gcashPaymentForm");
+    const codInfo = document.getElementById("codPaymentInfo");
+    const statusInfo = document.getElementById("paymentStatusInfo");
+
+    // Reset visibility
+    if (gcashForm) gcashForm.style.display = "none";
+    if (codInfo) codInfo.style.display = "none";
+    if (statusInfo) statusInfo.style.display = "none";
+
+    if (paymentStatus === "confirmed") {
+      if (statusInfo) {
+        statusInfo.style.display = "block";
+        statusInfo.innerHTML = `
+          <div style="margin-top:10px;padding:12px;background:#e8f5e9;border-radius:10px;text-align:center;font-size:14px;color:#2e7d32">
+            <i class="fa-solid fa-check-circle" style="font-size:20px"></i>
+            <div style="font-weight:600;margin-top:4px">Payment Confirmed!</div>
+          </div>
+        `;
+      }
+    } else if (paymentStatus === "submitted") {
+      if (statusInfo) {
+        statusInfo.style.display = "block";
+        statusInfo.innerHTML = `
+          <div style="margin-top:10px;padding:12px;background:#e3f2fd;border-radius:10px;text-align:center;font-size:13px;color:#1565c0">
+            <i class="fa-solid fa-clock fa-spin"></i>
+            <div style="font-weight:600;margin-top:4px">Payment Submitted</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">Waiting for rider to confirm</div>
+          </div>
+        `;
+      }
+    } else if (paymentMethod === "gcash") {
+      if (gcashForm) {
+        gcashForm.style.display = "block";
+        // Only wire up once
+        if (!this._gcashFormWired) {
+          this._gcashFormWired = true;
+          document
+            .getElementById("submitGcashBtn")
+            ?.addEventListener("click", () => this.submitGcashPayment());
+
+          // Screenshot preview
+          document
+            .getElementById("gcashScreenshotInput")
+            ?.addEventListener("change", (e) => {
+              const file = e.target.files[0];
+              const preview = document.getElementById("gcashScreenshotPreview");
+              if (file && preview) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:120px;border-radius:8px">`;
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+        }
+      }
+    } else {
+      // COD
+      if (codInfo) codInfo.style.display = "block";
+    }
+
+    // Toggle panel body
+    const toggle = document.getElementById("paymentPanelToggle");
+    const body = document.getElementById("paymentPanelBody");
+    const arrow = document.getElementById("paymentPanelArrow");
+    if (toggle && !this._paymentToggleWired) {
+      this._paymentToggleWired = true;
+      toggle.addEventListener("click", () => {
+        const isCollapsed = body.classList.contains("collapsed");
+        body.classList.toggle("collapsed");
+        if (arrow) arrow.style.transform = isCollapsed ? "" : "rotate(180deg)";
+      });
+    }
+  }
+
+  async submitGcashPayment() {
+    if (!this.requestId) return;
+
+    const refInput = document.getElementById("gcashRefInput");
+    const reference = refInput?.value?.trim();
+    if (!reference) {
+      alert("Please enter your GCash reference number");
+      refInput?.focus();
+      return;
+    }
+
+    const btn = document.getElementById("submitGcashBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+    }
+
+    try {
+      // Upload screenshot if provided
+      let screenshotUrl = null;
+      const screenshotInput = document.getElementById("gcashScreenshotInput");
+      if (screenshotInput?.files?.length > 0) {
+        try {
+          const formData = new FormData();
+          formData.append("file", screenshotInput.files[0]);
+          const token = localStorage.getItem("access_token");
+          const uploadRes = await fetch(
+            `${PASUGO_API_BASE}/api/uploads/image`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            },
+          );
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            screenshotUrl = uploadData.data?.url || uploadData.url;
+          }
+        } catch (uploadErr) {
+          console.warn("Screenshot upload failed:", uploadErr);
+        }
+      }
+
+      const token = localStorage.getItem("access_token");
+      const payload = { gcash_reference: reference };
+      if (screenshotUrl) payload.gcash_screenshot_url = screenshotUrl;
+
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/submit-payment`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to submit payment");
+      }
+
+      // Send chat message
+      if (
+        this.chat?.isConnected &&
+        this.chat?.ws?.readyState === WebSocket.OPEN
+      ) {
+        this.chat.ws.send(
+          JSON.stringify({
+            event: "send_message",
+            content: `💳 GCash payment submitted!\nReference: ${reference}`,
+            message_type: "text",
+          }),
+        );
+      }
+
+      // UI will update on next poll
+      alert("GCash payment submitted! Rider will verify your payment.");
+    } catch (err) {
+      console.error("[Payment] GCash submit error:", err);
+      alert("Failed to submit payment: " + err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-paper-plane"></i> Submit GCash Payment';
+      }
+    }
   }
 
   showCompletionModal(request) {
@@ -1714,7 +1925,19 @@ class RequestModalController {
       budget: 0,
       instructions: "",
       location: null,
+      paymentMethod: "cod",
     };
+
+    // Reset payment selector
+    this.paymentOptions?.forEach((o) => o.classList.remove("selected"));
+    const codOption = document.querySelector(
+      '.payment-option[data-method="cod"]',
+    );
+    if (codOption) codOption.classList.add("selected");
+    const codRadio = document.querySelector(
+      'input[name="paymentMethod"][value="cod"]',
+    );
+    if (codRadio) codRadio.checked = true;
 
     this.serviceCards.forEach((c) => c.classList.remove("selected"));
     this.vehicleCards.forEach((c) => c.classList.remove("selected"));

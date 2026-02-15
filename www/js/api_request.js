@@ -86,6 +86,7 @@ class PasugoAPI {
         pickup_location: requestData.pickupLocation || null,
         delivery_address: requestData.deliveryAddress || null,
         delivery_option: requestData.deliveryOption || null,
+        payment_method: requestData.paymentMethod || "cod",
       };
 
       // Get customer's live GPS and include it directly in the request payload

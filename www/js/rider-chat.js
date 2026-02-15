@@ -879,30 +879,154 @@ class RiderChatManager {
     const actionBtns = document.getElementById("taskActionBtns");
     if (!actionBtns) return;
 
+    const req = this.currentRequestDetails || {};
+    const hasBill = req.total_amount && req.total_amount > 0;
+    const paymentMethod = req.payment_method || "cod";
+    const paymentStatus = req.payment_status || "pending";
+
     if (status === "assigned") {
-      actionBtns.innerHTML = `
+      let html = "";
+
+      // Show bill form or bill summary
+      if (!hasBill) {
+        html += `
+          <div class="bill-form-section" id="billFormSection">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#333">
+              <i class="fa-solid fa-receipt"></i> Submit Bill to Customer
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <div style="flex:1">
+                <label style="font-size:11px;color:#666">Item Cost (₱)</label>
+                <input type="number" id="billItemCost" placeholder="0.00" min="0" step="0.01"
+                  style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+              </div>
+              <div style="flex:1">
+                <label style="font-size:11px;color:#666">Service Fee (₱)</label>
+                <input type="number" id="billServiceFee" placeholder="0.00" min="0" step="0.01"
+                  style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+              </div>
+            </div>
+            <div id="billTotalPreview" style="font-size:13px;color:#333;margin-bottom:8px;display:none">
+              Total: <strong>₱<span id="billTotalValue">0.00</span></strong>
+            </div>
+            <button class="task-action-btn" id="submitBillBtn" style="background:#ff9800;color:#fff;margin-bottom:10px">
+              <i class="fa-solid fa-paper-plane"></i> Send Bill to Customer
+            </button>
+          </div>
+        `;
+      } else {
+        html += `
+          <div style="background:#f0f7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+            <div style="font-weight:600;color:#0066cc;margin-bottom:4px"><i class="fa-solid fa-receipt"></i> Bill Sent</div>
+            <div>Items: ₱${parseFloat(req.item_cost).toFixed(2)} | Fee: ₱${parseFloat(req.service_fee).toFixed(2)}</div>
+            <div style="font-weight:700;margin-top:2px">Total: ₱${parseFloat(req.total_amount).toFixed(2)}</div>
+            <div style="color:#888;margin-top:2px">Payment: ${paymentMethod === "gcash" ? "GCash" : "COD"} | Status: ${paymentStatus}</div>
+          </div>
+        `;
+      }
+
+      html += `
         <button class="task-action-btn primary" id="startDeliveryBtn">
           <i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery
         </button>
       `;
+      actionBtns.innerHTML = html;
+
+      // Wire up bill form
+      const itemCostInput = document.getElementById("billItemCost");
+      const serviceFeeInput = document.getElementById("billServiceFee");
+      const totalPreview = document.getElementById("billTotalPreview");
+      const totalValue = document.getElementById("billTotalValue");
+
+      const updateTotal = () => {
+        const ic = parseFloat(itemCostInput?.value) || 0;
+        const sf = parseFloat(serviceFeeInput?.value) || 0;
+        if (totalPreview && totalValue) {
+          totalPreview.style.display = ic + sf > 0 ? "block" : "none";
+          totalValue.textContent = (ic + sf).toFixed(2);
+        }
+      };
+      itemCostInput?.addEventListener("input", updateTotal);
+      serviceFeeInput?.addEventListener("input", updateTotal);
+
+      document
+        .getElementById("submitBillBtn")
+        ?.addEventListener("click", () => this.submitBill());
       document
         .getElementById("startDeliveryBtn")
         ?.addEventListener("click", () => this.startDelivery());
     } else if (status === "in_progress") {
-      actionBtns.innerHTML = `
+      let html = "";
+
+      // Show bill summary if submitted
+      if (hasBill) {
+        html += `
+          <div style="background:#f0f7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+            <div style="font-weight:600;color:#0066cc;margin-bottom:4px"><i class="fa-solid fa-receipt"></i> Bill Summary</div>
+            <div>Items: ₱${parseFloat(req.item_cost).toFixed(2)} | Fee: ₱${parseFloat(req.service_fee).toFixed(2)}</div>
+            <div style="font-weight:700;margin-top:2px">Total: ₱${parseFloat(req.total_amount).toFixed(2)}</div>
+            <div style="color:#888;margin-top:2px">Payment: ${paymentMethod === "gcash" ? "GCash" : "COD"} | Status: <span id="paymentStatusText">${paymentStatus}</span></div>
+          </div>
+        `;
+      }
+
+      // GCash: show reference info if submitted
+      if (paymentMethod === "gcash" && paymentStatus === "submitted") {
+        html += `
+          <div style="background:#e8f5e9;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+            <div style="font-weight:600;color:#2e7d32"><i class="fa-solid fa-mobile-screen-button"></i> GCash Payment Received</div>
+            <div>Reference: <strong>${req.gcash_reference || "N/A"}</strong></div>
+            ${req.gcash_screenshot_url ? `<div style="margin-top:6px"><img src="${req.gcash_screenshot_url}" style="max-width:100%;border-radius:8px;max-height:150px" onclick="window.open('${req.gcash_screenshot_url}')"></div>` : ""}
+          </div>
+        `;
+      }
+
+      // Confirm payment button (only if bill submitted but payment not yet confirmed)
+      if (hasBill && paymentStatus !== "confirmed") {
+        html += `
+          <button class="task-action-btn" id="confirmPaymentBtn" style="background:#4caf50;color:#fff;margin-bottom:10px">
+            <i class="fa-solid fa-check-double"></i> Confirm Payment Received
+          </button>
+        `;
+      }
+
+      if (paymentStatus === "confirmed") {
+        html += `
+          <div style="text-align:center;padding:6px;color:#28a745;font-weight:600;font-size:13px;margin-bottom:10px">
+            <i class="fa-solid fa-check-circle"></i> Payment Confirmed!
+          </div>
+        `;
+      }
+
+      html += `
         <button class="task-action-btn complete" id="completeDeliveryBtn">
           <i class="fa-solid fa-check-circle"></i> Complete Delivery
         </button>
       `;
+      actionBtns.innerHTML = html;
+
+      document
+        .getElementById("confirmPaymentBtn")
+        ?.addEventListener("click", () => this.confirmPayment());
       document
         .getElementById("completeDeliveryBtn")
         ?.addEventListener("click", () => this.completeDelivery());
     } else if (status === "completed") {
-      actionBtns.innerHTML = `
+      let html = "";
+      if (hasBill) {
+        html += `
+          <div style="background:#f0f7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+            <div>Total: <strong>₱${parseFloat(req.total_amount).toFixed(2)}</strong></div>
+            <div style="color:#28a745"><i class="fa-solid fa-check-circle"></i> Payment ${paymentStatus}</div>
+          </div>
+        `;
+      }
+      html += `
         <div style="text-align:center;padding:10px;color:#28a745;font-weight:600">
           <i class="fa-solid fa-check-circle"></i> Task Completed!
         </div>
       `;
+      actionBtns.innerHTML = html;
     } else {
       actionBtns.innerHTML = "";
     }
@@ -1098,6 +1222,165 @@ class RiderChatManager {
         btn.disabled = false;
         btn.innerHTML =
           '<i class="fa-solid fa-check-circle"></i> Complete Delivery';
+      }
+    }
+  }
+
+  // ── Submit bill to customer ──────────────────────────────
+  async submitBill() {
+    if (!this.requestId) return;
+
+    const itemCost = parseFloat(document.getElementById("billItemCost")?.value);
+    const serviceFee = parseFloat(
+      document.getElementById("billServiceFee")?.value,
+    );
+
+    if (!itemCost || itemCost <= 0) {
+      alert("Please enter the item cost");
+      return;
+    }
+    if (isNaN(serviceFee) || serviceFee < 0) {
+      alert("Please enter a valid service fee");
+      return;
+    }
+
+    const total = itemCost + serviceFee;
+    if (
+      !confirm(
+        `Send bill to customer?\n\nItems: ₱${itemCost.toFixed(2)}\nService Fee: ₱${serviceFee.toFixed(2)}\nTotal: ₱${total.toFixed(2)}`,
+      )
+    ) {
+      return;
+    }
+
+    const btn = document.getElementById("submitBillBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/submit-bill`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            item_cost: itemCost,
+            service_fee: serviceFee,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to submit bill");
+      }
+
+      const data = await res.json();
+
+      // Update local state
+      if (this.currentRequestDetails) {
+        this.currentRequestDetails.item_cost = itemCost;
+        this.currentRequestDetails.service_fee = serviceFee;
+        this.currentRequestDetails.total_amount = total;
+        this.currentRequestDetails.payment_status = "pending";
+      }
+
+      // Re-render buttons to show bill summary
+      this.updateTaskActionButtons(this.currentRequestStatus);
+
+      // Send chat message about the bill
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(
+          JSON.stringify({
+            event: "send_message",
+            content: `💰 Bill Summary:\n• Item Cost: ₱${itemCost.toFixed(2)}\n• Service Fee: ₱${serviceFee.toFixed(2)}\n• Total: ₱${total.toFixed(2)}\n\nPlease prepare the payment.`,
+            message_type: "text",
+          }),
+        );
+      }
+
+      this.showSystem("Bill sent to customer!");
+    } catch (err) {
+      console.error("[RiderChat] submitBill error:", err);
+      alert("Failed to submit bill: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-paper-plane"></i> Send Bill to Customer';
+      }
+    }
+  }
+
+  // ── Confirm payment received ─────────────────────────────
+  async confirmPayment() {
+    if (!this.requestId) return;
+
+    const paymentMethod = this.currentRequestDetails?.payment_method || "cod";
+    const msg =
+      paymentMethod === "gcash"
+        ? "Confirm you received the GCash payment?"
+        : "Confirm you received the cash payment?";
+
+    if (!confirm(msg)) return;
+
+    const btn = document.getElementById("confirmPaymentBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Confirming...';
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/confirm-payment`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to confirm payment");
+      }
+
+      // Update local state
+      if (this.currentRequestDetails) {
+        this.currentRequestDetails.payment_status = "confirmed";
+      }
+
+      // Re-render buttons
+      this.updateTaskActionButtons(this.currentRequestStatus);
+
+      // Send chat message
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(
+          JSON.stringify({
+            event: "send_message",
+            content: "✅ Payment received and confirmed! Thank you.",
+            message_type: "text",
+          }),
+        );
+      }
+
+      this.showSystem("Payment confirmed!");
+    } catch (err) {
+      console.error("[RiderChat] confirmPayment error:", err);
+      alert("Failed to confirm payment: " + err.message);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML =
+          '<i class="fa-solid fa-check-double"></i> Confirm Payment Received';
       }
     }
   }
