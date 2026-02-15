@@ -5,6 +5,7 @@ class RiderMapController {
   constructor() {
     this.map = null;
     this.riderMarker = null;
+    this.accuracyCircle = null;
     this.currentPosition = null;
     this.watchId = null;
     this.isTracking = false;
@@ -241,7 +242,7 @@ class RiderMapController {
   updateRiderMarker(lat, lng, accuracy) {
     if (!this.map) return;
 
-    // Create custom icon for rider
+    // Create custom icon for rider (without accuracy circle - we'll use L.circle for that)
     const riderIcon = L.divIcon({
       className: "custom-rider-marker",
       html: `
@@ -255,26 +256,29 @@ class RiderMapController {
           display: flex;
           align-items: center;
           justify-content: center;
-          position: relative;
         ">
           <i class="fa-solid fa-motorcycle" style="color: #ffc107; font-size: 20px;"></i>
         </div>
-        <div style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: ${accuracy * 2}px;
-          height: ${accuracy * 2}px;
-          background: rgba(255, 193, 7, 0.1);
-          border: 2px solid rgba(255, 193, 7, 0.3);
-          border-radius: 50%;
-          z-index: -1;
-        "></div>
       `,
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });
+
+    // Update or create accuracy circle (uses meters, scales correctly with zoom)
+    if (accuracy && accuracy > 0) {
+      if (this.accuracyCircle) {
+        this.accuracyCircle.setLatLng([lat, lng]);
+        this.accuracyCircle.setRadius(accuracy);
+      } else {
+        this.accuracyCircle = L.circle([lat, lng], {
+          radius: accuracy, // in meters
+          color: "rgba(255, 193, 7, 0.5)",
+          fillColor: "rgba(255, 193, 7, 0.15)",
+          fillOpacity: 0.15,
+          weight: 2,
+        }).addTo(this.map);
+      }
+    }
 
     if (this.riderMarker) {
       // Update existing marker
@@ -284,6 +288,7 @@ class RiderMapController {
       // Create new marker
       this.riderMarker = L.marker([lat, lng], {
         icon: riderIcon,
+        zIndexOffset: 1000, // Keep marker above accuracy circle
       })
         .addTo(this.map)
         .bindPopup(
