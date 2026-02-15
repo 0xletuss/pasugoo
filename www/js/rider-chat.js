@@ -21,6 +21,7 @@ class RiderChatManager {
     this.isOpen = false;
     this.unreadCount = 0;
     this.currentRequestStatus = null;
+    this.currentRequestDetails = null;
 
     // DOM elements (will be set when panel is created)
     this.chatPanel = null;
@@ -109,13 +110,13 @@ class RiderChatManager {
         bottom: calc(70px + env(safe-area-inset-bottom, 0px));
         left: 0;
         right: 0;
-        height: 55vh;
+        height: 60vh;
         max-height: calc(100vh - 150px);
         background: #fff;
         border-top-left-radius: 25px;
         border-top-right-radius: 25px;
         box-shadow: 0 -5px 30px rgba(0,0,0,0.2);
-        z-index: 25;
+        z-index: 50;
         display: flex;
         flex-direction: column;
         transform: translateY(100%);
@@ -179,6 +180,7 @@ class RiderChatManager {
         overflow-y: auto;
         padding: 15px;
         background: #f8f9fa;
+        min-height: 120px;
       }
 
       .rider-chat-input-area {
@@ -370,8 +372,22 @@ class RiderChatManager {
         background: #f8f9fa;
         border-bottom: 1px solid #eee;
         padding: 12px 15px;
-        max-height: 200px;
+        max-height: 150px;
         overflow-y: auto;
+        flex-shrink: 0;
+        transition: max-height 0.3s ease, padding 0.3s ease;
+      }
+
+      .rider-task-panel.collapsed {
+        max-height: 45px;
+        overflow: hidden;
+        padding: 10px 15px;
+      }
+
+      .rider-task-panel.collapsed .task-items-list,
+      .rider-task-panel.collapsed .task-meta,
+      .rider-task-panel.collapsed .task-action-btns {
+        display: none;
       }
 
       .task-panel-header {
@@ -520,7 +536,12 @@ class RiderChatManager {
       <div class="rider-task-panel" id="riderTaskPanel">
         <div class="task-panel-header">
           <h4><i class="fa-solid fa-clipboard-list"></i> Task Details</h4>
-          <span class="task-status-badge assigned" id="taskStatusBadge">Loading...</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="task-status-badge assigned" id="taskStatusBadge">Loading...</span>
+            <button class="task-toggle-btn" id="taskToggleBtn" title="Toggle task details">
+              <i class="fa-solid fa-chevron-up"></i>
+            </button>
+          </div>
         </div>
         <div class="task-items-list" id="taskItemsList">
           Loading task details...
@@ -618,6 +639,25 @@ class RiderChatManager {
         this.completeDelivery(),
       );
     }
+
+    // Task panel toggle
+    const taskToggleBtn = document.getElementById("taskToggleBtn");
+    if (taskToggleBtn) {
+      taskToggleBtn.addEventListener("click", () => this.toggleTaskPanel());
+    }
+  }
+
+  // ── Toggle task panel collapse ─────────────────────────────
+  toggleTaskPanel() {
+    const taskPanel = document.getElementById("riderTaskPanel");
+    const toggleBtn = document.getElementById("taskToggleBtn");
+    if (!taskPanel || !toggleBtn) return;
+
+    taskPanel.classList.toggle("collapsed");
+    const isCollapsed = taskPanel.classList.contains("collapsed");
+    toggleBtn.innerHTML = isCollapsed
+      ? '<i class="fa-solid fa-chevron-down"></i>'
+      : '<i class="fa-solid fa-chevron-up"></i>';
   }
 
   // ── Connect to conversation ──────────────────────────────
@@ -758,6 +798,7 @@ class RiderChatManager {
 
       const data = await res.json();
       const request = data.data;
+      this.currentRequestDetails = request;
 
       this.currentRequestStatus = request.status;
       this.displayTaskDetails(request);
@@ -913,6 +954,21 @@ class RiderChatManager {
       }
 
       this.showSystem("Delivery started! On your way to the customer.");
+
+      // Close chat and focus map on delivery address
+      const deliveryAddress = this.currentRequestDetails?.delivery_address;
+      this.closeChat();
+      if (
+        deliveryAddress &&
+        window.riderMapController?.focusOnDeliveryAddress
+      ) {
+        setTimeout(() => {
+          window.riderMapController.focusOnDeliveryAddress(
+            deliveryAddress,
+            this.currentRequestDetails?.customer_name || "Customer",
+          );
+        }, 250);
+      }
     } catch (err) {
       console.error("[RiderChat] startDelivery error:", err);
       alert("Failed to start delivery: " + err.message);

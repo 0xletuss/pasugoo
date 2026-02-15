@@ -9,6 +9,7 @@ class RiderMapController {
     this.currentPosition = null;
     this.watchId = null;
     this.isTracking = false;
+    this.deliveryMarker = null;
 
     // High accuracy geolocation options
     this.geoOptions = {
@@ -393,6 +394,78 @@ class RiderMapController {
       );
 
     return marker;
+  }
+
+  // Focus the map on a delivery address using geocoding
+  async focusOnDeliveryAddress(address, customerName) {
+    if (!this.map || !address) return;
+
+    try {
+      const encoded = encodeURIComponent(address);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encoded}`;
+      const res = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Geocoding request failed");
+      }
+
+      const results = await res.json();
+      if (!results || results.length === 0) {
+        throw new Error("Address not found");
+      }
+
+      const lat = parseFloat(results[0].lat);
+      const lng = parseFloat(results[0].lon);
+
+      const deliveryIcon = L.divIcon({
+        className: "custom-delivery-marker",
+        html: `
+          <div style="
+            background: #28a745;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <i class="fa-solid fa-house" style="color: #ffffff; font-size: 16px;"></i>
+          </div>
+        `,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      if (this.deliveryMarker) {
+        this.deliveryMarker.setLatLng([lat, lng]);
+      } else {
+        this.deliveryMarker = L.marker([lat, lng], {
+          icon: deliveryIcon,
+        })
+          .addTo(this.map)
+          .bindPopup(
+            `
+          <div style="text-align: center; padding: 5px;">
+            <strong>${customerName || "Customer"}</strong><br>
+            <small>Delivery Address</small>
+          </div>
+        `,
+          );
+      }
+
+      this.map.flyTo([lat, lng], 16, {
+        animate: true,
+        duration: 0.8,
+      });
+    } catch (error) {
+      console.error("Map Error:", error);
+    }
   }
 }
 
