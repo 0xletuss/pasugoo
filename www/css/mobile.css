@@ -1,0 +1,708 @@
+/* ========================================
+   MOBILE / CORDOVA OPTIMIZATION CSS
+   Pasugo - Mobile-First Overrides
+   ======================================== */
+
+/* ── BASE RESETS FOR CORDOVA ────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+  /* Prevent pull-to-refresh */
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Safe area padding for notched phones */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Allow scrollable containers to scroll properly */
+.page-wrapper,
+.main-container,
+.modal-content,
+.chat-container,
+#requestsContainer {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+/* ── PREVENT iOS INPUT ZOOM (font-size must be >= 16px) ── */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0; /* prevents iOS rounding */
+}
+
+/* Re-apply border-radius after reset */
+.form-group input,
+.form-group select {
+  border-radius: 50px;
+}
+
+.form-group textarea {
+  border-radius: 20px;
+}
+
+.form-input,
+.item-input-group input,
+.message-input {
+  border-radius: 8px;
+}
+
+.message-input {
+  border-radius: 24px;
+}
+
+/* ── MINIMUM TOUCH TARGET (44x44px per Apple HIG) ──────── */
+button,
+a,
+.service-card,
+.vehicle-card,
+.delivery-option,
+.payment-option,
+.control-btn,
+.nav-item,
+.rider-nav-item,
+.map-control-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ── ACTIVE STATES (replace hover on touch devices) ────── */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable hover transforms on touch */
+  .service-card:hover,
+  .vehicle-card:hover,
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover,
+  .delivery-option:hover,
+  .payment-option:hover,
+  .control-btn:hover,
+  .social-btn:hover,
+  .btn-add-item:hover,
+  .request-card-compact:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+
+  /* Active tap feedback instead */
+  .service-card:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  .vehicle-card:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  .control-btn:active,
+  .map-control-btn:active {
+    transform: scale(0.92);
+    background: #ffc107;
+    color: #000;
+  }
+
+  .payment-option:active {
+    transform: scale(0.98);
+  }
+
+  .delivery-option:active {
+    transform: scale(0.98);
+  }
+
+  .social-btn:active {
+    background: #f0f0f0;
+  }
+
+  .request-action-btn:active {
+    transform: scale(0.97) !important;
+  }
+
+  /* Always show remove buttons on touch (no hover) */
+  .photo-remove-btn {
+    opacity: 1 !important;
+  }
+
+  .file-remove-btn {
+    opacity: 1 !important;
+  }
+}
+
+/* ── AUTH PAGES (login, register, forgot-password) ──────── */
+.page-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.top-header {
+  padding: 16px 20px 30px;
+  padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px));
+}
+
+.header-content h1 {
+  font-size: 26px;
+}
+
+.header-content p {
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.main-container {
+  padding: 28px 20px;
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+}
+
+.nav-bar {
+  margin-bottom: 20px;
+}
+
+/* ── MAP DASHBOARD (customer) ──────────────────────────── */
+.map-wrapper {
+  height: 100vh;
+  height: 100dvh; /* dynamic viewport for mobile */
+}
+
+.floating-search {
+  top: max(50px, calc(env(safe-area-inset-top, 0px) + 16px));
+  width: 90%;
+}
+
+.search-pill {
+  padding: 10px 16px;
+}
+
+.search-pill span {
+  font-size: 13px;
+}
+
+.map-controls {
+  top: max(120px, calc(env(safe-area-inset-top, 0px) + 80px));
+  right: 14px;
+  gap: 10px;
+}
+
+.control-btn {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+
+/* Bottom sheet */
+.bottom-sheet {
+  padding: 20px 20px 80px;
+  padding-bottom: max(90px, calc(env(safe-area-inset-bottom, 0px) + 85px));
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+}
+
+.route-details h3 {
+  font-size: 16px;
+}
+
+/* Bottom nav dock */
+.bottom-nav-dock {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  border-radius: 0;
+  padding: 8px 16px;
+  padding-bottom: max(10px, calc(env(safe-area-inset-bottom, 0px) + 4px));
+  transform: none;
+}
+
+.nav-item {
+  font-size: 18px;
+  padding: 8px 10px;
+}
+
+.nav-fab-container {
+  top: -20px;
+}
+
+.nav-fab {
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+  box-shadow: 0 0 0 6px white;
+}
+
+/* Riders badge */
+.riders-info-badge {
+  top: max(120px, calc(env(safe-area-inset-top, 0px) + 80px));
+  left: 14px;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 16px;
+}
+
+/* ── REQUEST MODAL ─────────────────────────────────────── */
+.request-modal {
+  max-height: calc(100vh - env(safe-area-inset-top, 0px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  border-radius: 20px 20px 0 0;
+}
+
+.modal-header {
+  padding: 14px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-header h2 {
+  font-size: 15px;
+}
+
+.modal-content {
+  padding: 20px 16px;
+  min-height: auto;
+  padding-bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+}
+
+/* Service grid - always 2 columns on mobile */
+.service-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.service-card {
+  padding: 14px 10px;
+}
+
+.service-card i {
+  font-size: 26px;
+}
+
+.service-card span {
+  font-size: 12px;
+}
+
+/* Vehicle grid */
+.vehicle-grid {
+  gap: 10px;
+}
+
+.vehicle-card {
+  padding: 12px 8px;
+}
+
+/* Step 2 content */
+.form-step h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+/* Confirmation card */
+.confirmation-card {
+  padding: 14px;
+}
+
+.conf-item {
+  padding: 10px 0;
+}
+
+.conf-item .label {
+  font-size: 12px;
+}
+
+.conf-item .value {
+  font-size: 12px;
+}
+
+/* Payment method selector */
+.payment-option {
+  padding: 12px 14px;
+}
+
+.payment-option-content > i {
+  font-size: 20px;
+}
+
+.payment-option-content strong {
+  font-size: 13px;
+}
+
+/* Form buttons */
+.form-buttons {
+  margin-top: 20px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 14px 14px;
+  font-size: 14px;
+}
+
+/* ── WAITING MODAL ─────────────────────────────────────── */
+.waiting-modal {
+  padding: 28px 20px;
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+  border-radius: 20px 20px 0 0;
+}
+
+.pulse-animation {
+  font-size: 56px;
+}
+
+.waiting-content h3 {
+  font-size: 17px;
+}
+
+.waiting-timer {
+  font-size: 24px;
+}
+
+/* ── CHAT MODAL ────────────────────────────────────────── */
+.chat-modal {
+  height: calc(100vh - env(safe-area-inset-top, 0px));
+  height: calc(100dvh - env(safe-area-inset-top, 0px));
+  border-radius: 20px 20px 0 0;
+}
+
+.chat-header {
+  padding: 14px 16px;
+  padding-top: max(14px, env(safe-area-inset-top, 0px));
+}
+
+.rider-info-chat h4 {
+  font-size: 14px;
+}
+
+/* Task progress */
+.task-progress-section {
+  padding: 14px 16px;
+}
+
+.progress-circle {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+
+.progress-step span {
+  font-size: 10px;
+}
+
+/* Payment panel in chat */
+.payment-panel-header {
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.payment-panel-body {
+  padding: 0 16px 14px;
+}
+
+/* Chat container */
+.chat-container {
+  padding: 14px 16px;
+}
+
+.message-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+/* Message input - critical for mobile */
+.message-input-section {
+  padding: 10px 16px;
+  padding-bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  gap: 8px;
+}
+
+.message-input {
+  padding: 10px 14px;
+  font-size: 16px !important; /* prevent iOS zoom */
+  min-height: 44px;
+}
+
+.btn-send {
+  width: 44px;
+  height: 44px;
+}
+
+/* ── RIDER DASHBOARD ───────────────────────────────────── */
+.rider-status-bar {
+  padding: 12px 16px;
+  padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));
+}
+
+.toggle-online-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+.rider-map-controls {
+  top: max(80px, calc(env(safe-area-inset-top, 0px) + 70px));
+  left: 12px;
+}
+
+.requests-badge {
+  top: max(80px, calc(env(safe-area-inset-top, 0px) + 70px));
+  right: 12px;
+}
+
+.location-status-card {
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  left: 12px;
+  right: 12px;
+  padding: 12px 14px;
+}
+
+.location-status-card h3 {
+  font-size: 14px;
+}
+
+.requests-modal {
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(65vh - 60px);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+#requestsContainer {
+  padding: 14px;
+  max-height: calc(65vh - 130px);
+}
+
+.request-card-compact {
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.request-service-type {
+  font-size: 14px;
+}
+
+.request-items {
+  font-size: 12px;
+  padding: 10px;
+}
+
+.request-actions {
+  gap: 8px;
+}
+
+.request-action-btn {
+  padding: 12px;
+  font-size: 12px;
+  min-height: 44px;
+}
+
+.rider-bottom-nav {
+  padding: 6px 12px;
+  padding-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 4px));
+}
+
+.rider-nav-item {
+  padding: 6px 8px;
+  min-width: 50px;
+}
+
+.rider-nav-item span {
+  font-size: 9px;
+}
+
+/* ── RIDER CHAT PANEL ──────────────────────────────────── */
+.task-action-btn {
+  min-height: 44px;
+  font-size: 14px;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.task-action-btn.primary {
+  background: #ffc107;
+  color: #333;
+  font-weight: 600;
+}
+
+.task-action-btn.complete {
+  background: #28a745;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── UPLOAD AREAS ──────────────────────────────────────── */
+.photo-upload-area {
+  padding: 20px 16px;
+}
+
+.upload-placeholder i {
+  font-size: 28px;
+}
+
+.photo-preview-container {
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 10px;
+}
+
+/* Always visible on mobile */
+.photo-remove-btn {
+  opacity: 1;
+}
+
+.file-upload-area {
+  padding: 20px 16px;
+}
+
+/* ── SCROLLBAR HIDE (mobile doesn't need visible scrollbars) ── */
+.modal-content::-webkit-scrollbar,
+.chat-container::-webkit-scrollbar,
+.page-wrapper::-webkit-scrollbar,
+#requestsContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.modal-content,
+.chat-container,
+.page-wrapper,
+#requestsContainer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── LOADING OVERLAY ───────────────────────────────────── */
+.location-loading,
+.location-loading-overlay {
+  border-radius: 12px;
+  padding: 18px 28px;
+}
+
+/* ── AUTH WARNING BANNER ───────────────────────────────── */
+.auth-warning {
+  padding: 12px 16px;
+  padding-top: max(12px, calc(env(safe-area-inset-top, 0px) + 8px));
+  font-size: 13px;
+}
+
+.auth-warning button {
+  padding: 6px 16px;
+  font-size: 12px;
+}
+
+/* ── SPLASH SCREEN ─────────────────────────────────────── */
+.splash-screen {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+.splash-title {
+  font-size: 40px;
+}
+
+.splash-subtitle {
+  font-size: 12px;
+  letter-spacing: 3px;
+}
+
+/* ── KEYBOARD OPEN ADJUSTMENTS ─────────────────────────── */
+/* When virtual keyboard opens, adjust chat input */
+@supports (height: 100dvh) {
+  .chat-modal {
+    height: 100dvh;
+  }
+}
+
+/* ── LANDSCAPE MODE ────────────────────────────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .chat-modal {
+    height: 100vh;
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .modal-content {
+    min-height: auto;
+  }
+
+  .pulse-animation {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  .waiting-timer {
+    font-size: 20px;
+  }
+}
+
+/* ── VERY SMALL SCREENS (< 360px) ─────────────────────── */
+@media (max-width: 359px) {
+  .service-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .service-card {
+    padding: 10px 8px;
+  }
+
+  .service-card i {
+    font-size: 22px;
+  }
+
+  .service-card span {
+    font-size: 11px;
+  }
+
+  .vehicle-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .header-content h1 {
+    font-size: 22px;
+  }
+
+  .floating-search {
+    width: 92%;
+  }
+
+  .bottom-nav-dock {
+    padding: 6px 12px;
+  }
+
+  .nav-fab {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+}
