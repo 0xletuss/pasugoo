@@ -1993,6 +1993,17 @@ class RequestModalController {
           <div style="font-size:24px;font-weight:600;color:#28a745;">₱${parseFloat(request.total_amount || request.total_cost || 0).toFixed(2)}</div>
         </div>
         
+        ${
+          request.payment_proof_url
+            ? `
+        <div style="background:#f0f7ff;padding:12px;border-radius:12px;margin-bottom:15px;text-align:center;">
+          <div style="font-size:12px;color:#666;margin-bottom:6px;"><i class="fa-solid fa-receipt"></i> Proof of Payment</div>
+          <img src="${request.payment_proof_url}" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer" onclick="window._chatImageOverlay('${request.payment_proof_url}')">
+        </div>
+        `
+            : ""
+        }
+        
         <button id="rateRiderBtn" style="width:100%;padding:14px;background:var(--primary-yellow, #ffc107);color:#000;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px;">
           <i class="fa-solid fa-star"></i> Rate Your Rider
         </button>

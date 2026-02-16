@@ -1205,9 +1205,31 @@ class RiderChatManager {
       // Confirm payment button (only if bill submitted but payment not yet confirmed)
       if (hasBill && paymentStatus !== "confirmed") {
         html += `
-          <button class="task-action-btn" id="confirmPaymentBtn" style="background:#4caf50;color:#fff;margin-bottom:10px">
-            <i class="fa-solid fa-check-double"></i> Confirm Payment Received
-          </button>
+          <div id="proofPaymentSection">
+            <div style="background:#fff3cd;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#856404">
+              <i class="fa-solid fa-camera"></i> <strong>Proof of Payment Required</strong><br>
+              Take a photo or upload proof that you received payment from the customer.
+            </div>
+            <div id="proofPreviewArea" style="display:none;margin-bottom:10px;text-align:center">
+              <img id="proofPreviewImg" style="max-width:100%;max-height:180px;border-radius:10px;border:2px solid #28a745" />
+              <button id="removeProofBtn" style="display:block;margin:6px auto 0;background:none;border:none;color:#dc3545;font-size:12px;cursor:pointer">
+                <i class="fa-solid fa-trash"></i> Remove photo
+              </button>
+            </div>
+            <div id="proofUploadBtns" style="display:flex;gap:8px;margin-bottom:10px">
+              <button class="task-action-btn" id="proofCameraBtn" style="background:#17a2b8;color:#fff;flex:1;font-size:12px;padding:10px">
+                <i class="fa-solid fa-camera"></i> Camera
+              </button>
+              <button class="task-action-btn" id="proofGalleryBtn" style="background:#6c757d;color:#fff;flex:1;font-size:12px;padding:10px">
+                <i class="fa-solid fa-image"></i> Gallery
+              </button>
+            </div>
+            <input type="file" id="proofCameraInput" accept="image/*" capture="environment" style="display:none">
+            <input type="file" id="proofGalleryInput" accept="image/*" style="display:none">
+            <button class="task-action-btn" id="confirmPaymentBtn" style="background:#4caf50;color:#fff;margin-bottom:10px;opacity:0.5" disabled>
+              <i class="fa-solid fa-check-double"></i> Confirm Payment Received
+            </button>
+          </div>
         `;
       }
 
@@ -1217,6 +1239,14 @@ class RiderChatManager {
             <i class="fa-solid fa-check-circle"></i> Payment Confirmed!
           </div>
         `;
+        if (req.payment_proof_url) {
+          html += `
+            <div style="text-align:center;margin-bottom:10px">
+              <div style="font-size:11px;color:#666;margin-bottom:4px"><i class="fa-solid fa-receipt"></i> Proof of Payment</div>
+              <img src="${req.payment_proof_url}" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer" onclick="window.riderChatManager.openImageOverlay('${req.payment_proof_url}')">
+            </div>
+          `;
+        }
       }
 
       html += `
@@ -1226,9 +1256,52 @@ class RiderChatManager {
       `;
       actionBtns.innerHTML = html;
 
-      document
-        .getElementById("confirmPaymentBtn")
-        ?.addEventListener("click", () => this.confirmPayment());
+      // Proof of payment camera/gallery listeners
+      const proofCameraBtn = document.getElementById("proofCameraBtn");
+      const proofCameraInput = document.getElementById("proofCameraInput");
+      const proofGalleryBtn = document.getElementById("proofGalleryBtn");
+      const proofGalleryInput = document.getElementById("proofGalleryInput");
+      const proofPreviewArea = document.getElementById("proofPreviewArea");
+      const proofPreviewImg = document.getElementById("proofPreviewImg");
+      const removeProofBtn = document.getElementById("removeProofBtn");
+      const confirmPaymentBtn = document.getElementById("confirmPaymentBtn");
+
+      if (proofCameraBtn && proofCameraInput) {
+        proofCameraBtn.addEventListener("click", () =>
+          proofCameraInput.click(),
+        );
+        proofCameraInput.addEventListener("change", (e) => {
+          if (e.target.files?.[0]) this.handleProofImage(e.target.files[0]);
+          e.target.value = "";
+        });
+      }
+      if (proofGalleryBtn && proofGalleryInput) {
+        proofGalleryBtn.addEventListener("click", () =>
+          proofGalleryInput.click(),
+        );
+        proofGalleryInput.addEventListener("change", (e) => {
+          if (e.target.files?.[0]) this.handleProofImage(e.target.files[0]);
+          e.target.value = "";
+        });
+      }
+      if (removeProofBtn) {
+        removeProofBtn.addEventListener("click", () => {
+          this.paymentProofUrl = null;
+          if (proofPreviewArea) proofPreviewArea.style.display = "none";
+          if (confirmPaymentBtn) {
+            confirmPaymentBtn.disabled = true;
+            confirmPaymentBtn.style.opacity = "0.5";
+          }
+          const uploadBtns = document.getElementById("proofUploadBtns");
+          if (uploadBtns) uploadBtns.style.display = "flex";
+        });
+      }
+
+      if (confirmPaymentBtn) {
+        confirmPaymentBtn.addEventListener("click", () =>
+          this.confirmPayment(),
+        );
+      }
       document
         .getElementById("completeDeliveryBtn")
         ?.addEventListener("click", () => this.completeDelivery());
@@ -1538,15 +1611,95 @@ class RiderChatManager {
     }
   }
 
+  // ── Handle proof of payment image selection ───────────────
+  async handleProofImage(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image too large. Max 10MB.");
+      return;
+    }
+
+    const proofPreviewArea = document.getElementById("proofPreviewArea");
+    const proofPreviewImg = document.getElementById("proofPreviewImg");
+    const confirmPaymentBtn = document.getElementById("confirmPaymentBtn");
+    const uploadBtns = document.getElementById("proofUploadBtns");
+    const proofCameraBtn = document.getElementById("proofCameraBtn");
+    const proofGalleryBtn = document.getElementById("proofGalleryBtn");
+
+    // Show uploading state
+    if (proofCameraBtn) {
+      proofCameraBtn.disabled = true;
+      proofCameraBtn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> ...';
+    }
+    if (proofGalleryBtn) {
+      proofGalleryBtn.disabled = true;
+      proofGalleryBtn.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> ...';
+    }
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${PASUGO_API_BASE}/api/uploads/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const result = await res.json();
+      const imageUrl = result.data?.url;
+      if (!imageUrl) throw new Error("No URL returned");
+
+      this.paymentProofUrl = imageUrl;
+
+      // Show preview
+      if (proofPreviewImg) proofPreviewImg.src = imageUrl;
+      if (proofPreviewArea) proofPreviewArea.style.display = "block";
+      if (uploadBtns) uploadBtns.style.display = "none";
+
+      // Enable confirm button
+      if (confirmPaymentBtn) {
+        confirmPaymentBtn.disabled = false;
+        confirmPaymentBtn.style.opacity = "1";
+      }
+    } catch (err) {
+      console.error("[RiderChat] Proof upload error:", err);
+      alert("Failed to upload photo. Please try again.");
+    } finally {
+      if (proofCameraBtn) {
+        proofCameraBtn.disabled = false;
+        proofCameraBtn.innerHTML = '<i class="fa-solid fa-camera"></i> Camera';
+      }
+      if (proofGalleryBtn) {
+        proofGalleryBtn.disabled = false;
+        proofGalleryBtn.innerHTML = '<i class="fa-solid fa-image"></i> Gallery';
+      }
+    }
+  }
+
   // ── Confirm payment received ─────────────────────────────
   async confirmPayment() {
     if (!this.requestId) return;
 
     const paymentMethod = this.currentRequestDetails?.payment_method || "cod";
+
+    if (!this.paymentProofUrl) {
+      alert("Please take a photo of the proof of payment first.");
+      return;
+    }
+
     const msg =
       paymentMethod === "gcash"
-        ? "Confirm you received the GCash payment?"
-        : "Confirm you received the cash payment?";
+        ? "Confirm you received the GCash payment with proof photo?"
+        : "Confirm you received the cash payment with proof photo?";
 
     if (!confirm(msg)) return;
 
@@ -1567,6 +1720,9 @@ class RiderChatManager {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            payment_proof_url: this.paymentProofUrl,
+          }),
         },
       );
 
@@ -1594,8 +1750,20 @@ class RiderChatManager {
           taskStatusBadge.className = "task-status-badge completed";
         }
 
-        // Send completion chat message
+        // Send completion chat message + proof image
         if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+          // Send proof of payment image first
+          if (this.paymentProofUrl) {
+            this.ws.send(
+              JSON.stringify({
+                event: "send_message",
+                content: "📸 Proof of Payment",
+                message_type: "image",
+                attachment_url: this.paymentProofUrl,
+                attachment_type: "image",
+              }),
+            );
+          }
           this.ws.send(
             JSON.stringify({
               event: "send_message",
@@ -1607,6 +1775,7 @@ class RiderChatManager {
         }
 
         this.showSystem("Payment confirmed & delivery completed!");
+        this.paymentProofUrl = null;
 
         // Close chat after delay
         setTimeout(() => {
@@ -1617,8 +1786,19 @@ class RiderChatManager {
         // Re-render buttons (payment only confirmed, delivery not auto-completed)
         this.updateTaskActionButtons(this.currentRequestStatus);
 
-        // Send chat message
+        // Send proof image + chat message
         if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+          if (this.paymentProofUrl) {
+            this.ws.send(
+              JSON.stringify({
+                event: "send_message",
+                content: "📸 Proof of Payment",
+                message_type: "image",
+                attachment_url: this.paymentProofUrl,
+                attachment_type: "image",
+              }),
+            );
+          }
           this.ws.send(
             JSON.stringify({
               event: "send_message",
@@ -1627,6 +1807,8 @@ class RiderChatManager {
             }),
           );
         }
+
+        this.paymentProofUrl = null;
 
         this.showSystem("Payment confirmed!");
       }
