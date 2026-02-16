@@ -865,12 +865,20 @@ class RequestModalController {
         }
         return true;
       case 2:
-        if (
-          this.formData.serviceType === "pickup" &&
-          !this.formData.vehicleType
-        ) {
-          alert("Please select a vehicle type");
-          return false;
+        if (this.formData.serviceType === "pickup") {
+          // Auto-select motorcycle (only option)
+          this.formData.vehicleType = "motorcycle";
+          let destText = this.itemsList.value.trim();
+          if (!destText) {
+            alert("Please enter your destination");
+            return false;
+          }
+          this.formData.items = destText;
+          // Store destination as delivery_address so rider can navigate
+          this.formData.deliveryAddress = destText;
+          this.formData.deliveryOption = "custom-address";
+          this.formData.instructions = this.instructions.value.trim();
+          return true;
         }
         if (
           this.formData.serviceType === "bills" &&
@@ -932,12 +940,6 @@ class RequestModalController {
         placeholder: "E.g., 2kg rice, 1L milk...",
         helper: "List all items you need",
       },
-      bills: {
-        title: "Which bills do you need to pay?",
-        label: "Bills to Pay",
-        placeholder: "E.g., Electricity, Water...",
-        helper: "List which bills need to be paid",
-      },
       delivery: {
         title: "What needs to be picked up & delivered?",
         label: "Items to Deliver",
@@ -947,20 +949,20 @@ class RequestModalController {
       pharmacy: {
         title: "What items do you need from pharmacy?",
         label: "Pharmacy Items",
-        placeholder: "E.g., Paracetamol...",
-        helper: "List pharmacy items",
+        placeholder: "E.g., Paracetamol, Biogesic...",
+        helper: "List pharmacy items you need",
       },
       pickup: {
         title: "Where would you like to go?",
         label: "Destination",
-        placeholder: "E.g., SM Mall, Airport...",
-        helper: "Where to pick you up and go?",
+        placeholder: "E.g., SM Mall, Airport, Office...",
+        helper: "Enter your destination address",
       },
       documents: {
-        title: "Which documents do you need to process?",
+        title: "Which documents do you need processed?",
         label: "Documents Needed",
-        placeholder: "E.g., Birth certificate...",
-        helper: "What documents to process?",
+        placeholder: "E.g., Birth certificate, NBI clearance...",
+        helper: "Describe the documents to process",
       },
     };
 
@@ -972,10 +974,18 @@ class RequestModalController {
 
     this.vehicleSection.style.display =
       this.formData.serviceType === "pickup" ? "block" : "none";
-    this.billPhotoSection.style.display =
-      this.formData.serviceType === "bills" ? "block" : "none";
+    this.billPhotoSection.style.display = "none";
     this.fileUploadSection.style.display =
       this.formData.serviceType !== "bills" ? "block" : "none";
+
+    // Auto-select motorcycle for pickup service
+    if (this.formData.serviceType === "pickup") {
+      this.formData.vehicleType = "motorcycle";
+      const motoCard = document.querySelector(
+        '.vehicle-card[data-vehicle="motorcycle"]',
+      );
+      if (motoCard) motoCard.classList.add("selected");
+    }
 
     if (this.formData.serviceType === "groceries") {
       this.groceriesItemsForm.style.display = "block";
@@ -1476,13 +1486,12 @@ class RequestModalController {
   updateConfirmationDisplay() {
     const sNames = {
       groceries: "Buy Groceries",
-      bills: "Pay Bills",
       delivery: "Pick & Deliver",
       pharmacy: "Pharmacy",
       pickup: "Pick Me Up",
       documents: "Documents",
     };
-    const vNames = { motorcycle: "Motorcycle", car: "Car", van: "Van" };
+    const vNames = { motorcycle: "Motorcycle" };
 
     this.confService.textContent = sNames[this.formData.serviceType] || "-";
 

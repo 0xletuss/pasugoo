@@ -1052,24 +1052,45 @@ class RiderChatManager {
     const taskStatusBadge = document.getElementById("taskStatusBadge");
 
     if (taskStatusBadge) {
+      const sType = request.service_type?.toLowerCase();
+      const statusLabels = {
+        assigned: sType === "pickup" ? "Picking Up" : "Assigned",
+        in_progress: sType === "pickup" ? "On The Way" : "Delivering",
+        completed: "Completed",
+      };
       const statusText =
-        request.status === "in_progress"
-          ? "Delivering"
-          : request.status.charAt(0).toUpperCase() + request.status.slice(1);
+        statusLabels[request.status] ||
+        request.status.charAt(0).toUpperCase() + request.status.slice(1);
       taskStatusBadge.textContent = statusText;
       taskStatusBadge.className = `task-status-badge ${request.status}`;
     }
 
     if (taskItemsList) {
-      // Format items/instructions
+      const sType = request.service_type?.toLowerCase();
       const items =
         request.items_description ||
         request.special_instructions ||
-        "No items specified";
-      taskItemsList.innerHTML = `
-        <div style="margin-bottom:8px"><strong>${this.getServiceIcon(request.service_type)} ${this.formatServiceType(request.service_type)}</strong></div>
-        <div style="white-space:pre-wrap">${items}</div>
-      `;
+        "No details specified";
+
+      let detailsHtml = `<div style="margin-bottom:8px"><strong>${this.getServiceIcon(request.service_type)} ${this.formatServiceType(request.service_type)}</strong></div>`;
+
+      if (sType === "delivery" && request.pickup_location) {
+        detailsHtml += `<div style="margin-bottom:4px;font-size:12px;color:#0066cc"><i class="fa-solid fa-location-dot"></i> <strong>Pickup:</strong> ${request.pickup_location}</div>`;
+        if (request.delivery_address) {
+          detailsHtml += `<div style="margin-bottom:4px;font-size:12px;color:#28a745"><i class="fa-solid fa-map-pin"></i> <strong>Deliver to:</strong> ${request.delivery_address}</div>`;
+        } else {
+          detailsHtml += `<div style="margin-bottom:4px;font-size:12px;color:#28a745"><i class="fa-solid fa-map-pin"></i> <strong>Deliver to:</strong> Customer's location</div>`;
+        }
+      }
+
+      if (sType === "pickup") {
+        detailsHtml += `<div style="margin-bottom:4px;font-size:12px;color:#17a2b8"><i class="fa-solid fa-motorcycle"></i> <strong>Vehicle:</strong> Motorcycle</div>`;
+        detailsHtml += `<div style="margin-bottom:4px;font-size:12px;color:#0066cc"><i class="fa-solid fa-location-dot"></i> <strong>Destination:</strong> ${items}</div>`;
+      } else {
+        detailsHtml += `<div style="white-space:pre-wrap">${items}</div>`;
+      }
+
+      taskItemsList.innerHTML = detailsHtml;
     }
 
     if (taskMeta) {
@@ -1101,6 +1122,32 @@ class RiderChatManager {
     const hasBill = req.total_amount && req.total_amount > 0;
     const paymentMethod = req.payment_method || "cod";
     const paymentStatus = req.payment_status || "pending";
+    const sType = (req.service_type || "").toLowerCase();
+
+    // Service-aware labels
+    const startLabels = {
+      groceries:
+        '<i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery',
+      delivery:
+        '<i class="fa-solid fa-truck"></i> Items Picked Up - Start Delivery',
+      pharmacy:
+        '<i class="fa-solid fa-truck"></i> Got Medicine - Start Delivery',
+      pickup: '<i class="fa-solid fa-motorcycle"></i> On My Way to Pick You Up',
+      documents:
+        '<i class="fa-solid fa-truck"></i> Documents Ready - Start Delivery',
+    };
+    const completeLabels = {
+      groceries: '<i class="fa-solid fa-check-circle"></i> Complete Delivery',
+      delivery: '<i class="fa-solid fa-check-circle"></i> Complete Delivery',
+      pharmacy: '<i class="fa-solid fa-check-circle"></i> Complete Delivery',
+      pickup: '<i class="fa-solid fa-check-circle"></i> Ride Completed',
+      documents: '<i class="fa-solid fa-check-circle"></i> Documents Delivered',
+    };
+    const startLabel =
+      startLabels[sType] || '<i class="fa-solid fa-truck"></i> Start Delivery';
+    const completeLabel =
+      completeLabels[sType] ||
+      '<i class="fa-solid fa-check-circle"></i> Complete Delivery';
 
     if (status === "assigned") {
       let html = "";
@@ -1161,7 +1208,7 @@ class RiderChatManager {
 
       html += `
         <button class="task-action-btn primary" id="startDeliveryBtn">
-          <i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery
+          ${startLabel}
         </button>
       `;
       actionBtns.innerHTML = html;
@@ -1264,7 +1311,7 @@ class RiderChatManager {
 
       html += `
         <button class="task-action-btn complete" id="completeDeliveryBtn">
-          <i class="fa-solid fa-check-circle"></i> Complete Delivery
+          ${completeLabel}
         </button>
       `;
       actionBtns.innerHTML = html;
@@ -1374,23 +1421,46 @@ class RiderChatManager {
       // Update status badge
       const taskStatusBadge = document.getElementById("taskStatusBadge");
       if (taskStatusBadge) {
-        taskStatusBadge.textContent = "Delivering";
+        const sType = (
+          this.currentRequestDetails?.service_type || ""
+        ).toLowerCase();
+        taskStatusBadge.textContent =
+          sType === "pickup" ? "On The Way" : "Delivering";
         taskStatusBadge.className = "task-status-badge in_progress";
       }
 
-      // Send chat message
+      // Send service-aware chat message
       if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        const sType = (
+          this.currentRequestDetails?.service_type || ""
+        ).toLowerCase();
+        const chatMessages = {
+          groceries:
+            "🚚 I've finished shopping and am now on my way to deliver your items!",
+          delivery:
+            "🚚 I've picked up the items and am now on my way to deliver them!",
+          pharmacy: "💊 Got your medicine! On my way to deliver it now!",
+          pickup: "🏍️ I'm on my way to pick you up! Please be ready.",
+          documents:
+            "📄 Documents are ready! On my way to deliver them to you!",
+        };
         this.ws.send(
           JSON.stringify({
             event: "send_message",
-            content:
-              "🚚 I've finished shopping and am now on my way to deliver your items!",
+            content: chatMessages[sType] || "🚚 On my way to you now!",
             message_type: "text",
           }),
         );
       }
 
-      this.showSystem("Delivery started! On your way to the customer.");
+      const sType2 = (
+        this.currentRequestDetails?.service_type || ""
+      ).toLowerCase();
+      this.showSystem(
+        sType2 === "pickup"
+          ? "On your way to pick up the customer!"
+          : "Delivery started! On your way to the customer.",
+      );
 
       // Close chat and navigate to customer location
       this.closeChat();
@@ -1447,11 +1517,27 @@ class RiderChatManager {
       }
     } catch (err) {
       console.error("[RiderChat] startDelivery error:", err);
-      alert("Failed to start delivery: " + err.message);
+      alert("Failed to start: " + err.message);
       if (btn) {
         btn.disabled = false;
+        const sType = (
+          this.currentRequestDetails?.service_type || ""
+        ).toLowerCase();
+        const startLabels = {
+          groceries:
+            '<i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery',
+          delivery:
+            '<i class="fa-solid fa-truck"></i> Items Picked Up - Start Delivery',
+          pharmacy:
+            '<i class="fa-solid fa-truck"></i> Got Medicine - Start Delivery',
+          pickup:
+            '<i class="fa-solid fa-motorcycle"></i> On My Way to Pick You Up',
+          documents:
+            '<i class="fa-solid fa-truck"></i> Documents Ready - Start Delivery',
+        };
         btn.innerHTML =
-          '<i class="fa-solid fa-truck"></i> Done Shopping - Start Delivery';
+          startLabels[sType] ||
+          '<i class="fa-solid fa-truck"></i> Start Delivery';
       }
     }
   }
@@ -1459,10 +1545,18 @@ class RiderChatManager {
   async completeDelivery() {
     if (!this.requestId) return;
 
+    const sType = (
+      this.currentRequestDetails?.service_type || ""
+    ).toLowerCase();
+    const confirmMsgs = {
+      pickup: "Complete this ride? Make sure the passenger has arrived safely.",
+      documents: "Complete this task? Make sure documents have been delivered.",
+    };
     // Confirm completion
     if (
       !confirm(
-        "Are you sure you want to complete this delivery? Make sure you've received payment from the customer.",
+        confirmMsgs[sType] ||
+          "Complete this task? Make sure you've received payment from the customer.",
       )
     ) {
       return;
@@ -1503,19 +1597,35 @@ class RiderChatManager {
         taskStatusBadge.className = "task-status-badge completed";
       }
 
-      // Send completion message
+      // Send service-aware completion message
       if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        const sType = (
+          this.currentRequestDetails?.service_type || ""
+        ).toLowerCase();
+        const completeMsgs = {
+          groceries:
+            "✅ Delivery completed! Thank you for using Pasugo. Have a great day!",
+          delivery:
+            "✅ Delivery completed! Thank you for using Pasugo. Have a great day!",
+          pharmacy:
+            "✅ Medicine delivered! Thank you for using Pasugo. Get well soon!",
+          pickup:
+            "✅ Ride completed! Thank you for using Pasugo. Have a safe trip!",
+          documents:
+            "✅ Documents delivered! Thank you for using Pasugo. Have a great day!",
+        };
         this.ws.send(
           JSON.stringify({
             event: "send_message",
             content:
-              "✅ Delivery completed! Thank you for using Pasugo. Have a great day!",
+              completeMsgs[sType] ||
+              "✅ Task completed! Thank you for using Pasugo.",
             message_type: "text",
           }),
         );
       }
 
-      this.showSystem("Delivery completed successfully!");
+      this.showSystem("Task completed successfully!");
 
       // Close chat after delay
       setTimeout(() => {
@@ -1524,10 +1634,19 @@ class RiderChatManager {
       }, 2000);
     } catch (err) {
       console.error("[RiderChat] completeDelivery error:", err);
-      alert("Failed to complete delivery: " + err.message);
+      alert("Failed to complete: " + err.message);
       if (btn) {
         btn.disabled = false;
+        const sType = (
+          this.currentRequestDetails?.service_type || ""
+        ).toLowerCase();
+        const completeLabels = {
+          pickup: '<i class="fa-solid fa-check-circle"></i> Ride Completed',
+          documents:
+            '<i class="fa-solid fa-check-circle"></i> Documents Delivered',
+        };
         btn.innerHTML =
+          completeLabels[sType] ||
           '<i class="fa-solid fa-check-circle"></i> Complete Delivery';
       }
     }
@@ -1839,16 +1958,29 @@ class RiderChatManager {
   // ── Helper methods ───────────────────────────────────────
   getServiceIcon(serviceType) {
     const icons = {
-      pabili: "🛒",
-      pasugo: "📦",
-      pahatid: "🏍️",
+      groceries: "🛒",
+      delivery: "📦",
+      pharmacy: "💊",
+      pickup: "🏍️",
+      documents: "📄",
     };
     return icons[serviceType?.toLowerCase()] || "📋";
   }
 
   formatServiceType(serviceType) {
-    if (!serviceType) return "Service";
-    return serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
+    const names = {
+      groceries: "Buy Groceries",
+      delivery: "Pick & Deliver",
+      pharmacy: "Pharmacy",
+      pickup: "Pick Me Up",
+      documents: "Documents",
+    };
+    return (
+      names[serviceType?.toLowerCase()] ||
+      (serviceType
+        ? serviceType.charAt(0).toUpperCase() + serviceType.slice(1)
+        : "Service")
+    );
   }
 
   truncateText(text, maxLength) {

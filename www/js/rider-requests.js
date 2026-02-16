@@ -254,15 +254,50 @@ class RiderRequestHandler {
 
     const serviceIcons = {
       groceries: "fa-bag-shopping",
-      bills: "fa-receipt",
       delivery: "fa-box",
       pharmacy: "fa-pills",
       pickup: "fa-person",
       documents: "fa-file-contract",
     };
 
+    const serviceNames = {
+      groceries: "Buy Groceries",
+      delivery: "Pick & Deliver",
+      pharmacy: "Pharmacy",
+      pickup: "Pick Me Up",
+      documents: "Documents",
+    };
+
     const icon = serviceIcons[req.service_type] || "fa-circle-question";
+    const serviceName =
+      serviceNames[req.service_type] || req.service_type.replace("_", " ");
     const isUrgent = req.time_remaining_seconds < 300; // Less than 5 minutes
+
+    // Build location info for relevant services
+    let locationHtml = "";
+    if (req.service_type === "delivery" && req.pickup_location) {
+      locationHtml += `
+        <div style="font-size: 11px; color: #0066cc; margin-top: 4px;">
+          <i class="fa-solid fa-location-dot"></i> <strong>Pickup:</strong> ${req.pickup_location.length > 50 ? req.pickup_location.substring(0, 50) + "..." : req.pickup_location}
+        </div>`;
+      if (req.delivery_address) {
+        locationHtml += `
+        <div style="font-size: 11px; color: #28a745; margin-top: 2px;">
+          <i class="fa-solid fa-map-pin"></i> <strong>Deliver to:</strong> ${req.delivery_address.length > 50 ? req.delivery_address.substring(0, 50) + "..." : req.delivery_address}
+        </div>`;
+      } else {
+        locationHtml += `
+        <div style="font-size: 11px; color: #28a745; margin-top: 2px;">
+          <i class="fa-solid fa-map-pin"></i> <strong>Deliver to:</strong> Customer's location
+        </div>`;
+      }
+    }
+    if (req.service_type === "pickup") {
+      locationHtml += `
+        <div style="font-size: 11px; color: #17a2b8; margin-top: 4px;">
+          <i class="fa-solid fa-motorcycle"></i> Motorcycle ride
+        </div>`;
+    }
 
     return `
       <div class="request-card-compact ${isUrgent ? "urgent" : ""}">
@@ -270,7 +305,7 @@ class RiderRequestHandler {
           <div>
             <div class="request-service-type">
               <i class="fa-solid ${icon}"></i> 
-              ${req.service_type.replace("_", " ")}
+              ${serviceName}
             </div>
             <div class="request-customer">
               <i class="fa-solid fa-user"></i> ${req.customer_name}
@@ -284,6 +319,7 @@ class RiderRequestHandler {
             `
                 : ""
             }
+            ${locationHtml}
           </div>
           <div class="request-timer ${isUrgent ? "urgent" : ""}">
             <i class="fa-solid fa-clock"></i> ${timeRemaining}
