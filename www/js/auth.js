@@ -111,16 +111,30 @@ class TokenRefreshManager {
           throw new Error("No refresh token available");
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         const response = await fetch(`${API_BASE_URL_AUTH}/api/auth/refresh`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ refresh_token: refreshToken }),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
+
+        // Only clear tokens on explicit auth rejection
+        if (response.status === 401 || response.status === 403) {
+          console.warn("Token refresh rejected by server – session expired");
+          AuthTokenService.clearTokens();
+          window.location.href = "login.html";
+          throw new Error("Session expired");
+        }
+
         if (!response.ok) {
-          throw new Error("Token refresh failed");
+          throw new Error(`Token refresh failed: ${response.status}`);
         }
 
         const data = await response.json();
@@ -133,10 +147,17 @@ class TokenRefreshManager {
 
         return newAccessToken;
       } catch (error) {
-        console.error("Token refresh error:", error);
-        // Clear tokens and redirect to login
-        AuthTokenService.clearTokens();
-        window.location.href = "login.html";
+        // Don't clear tokens on network / timeout errors – keep session alive
+        if (
+          error.message === "Session expired" ||
+          error.message === "No refresh token available"
+        ) {
+          throw error;
+        }
+        console.warn(
+          "Token refresh network error (keeping session):",
+          error.message,
+        );
         throw error;
       } finally {
         this.isRefreshing = false;
@@ -959,6 +980,9 @@ async function validateSession() {
   const token = AuthTokenService.getAccessToken();
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch(
       `${API_BASE_URL_AUTH}/api/auth/validate-token`,
       {
@@ -966,8 +990,23 @@ async function validateSession() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       },
     );
+
+    clearTimeout(timeoutId);
+
+    // Server explicitly rejected the token
+    if (response.status === 401 || response.status === 403) {
+      console.log("Session validation: Token rejected, attempting refresh...");
+      try {
+        await TokenRefreshManager.refreshToken();
+        return true;
+      } catch (error) {
+        console.error("Session validation: Refresh failed:", error);
+        return false;
+      }
+    }
 
     const data = await response.json();
 
@@ -984,34 +1023,33 @@ async function validateSession() {
       }
       return true;
     } else {
-      // Token invalid, try to refresh
+      // Token invalid per server, try to refresh
       console.log("Session validation: Token invalid, attempting refresh...");
       try {
         await TokenRefreshManager.refreshToken();
         return true;
       } catch (error) {
-        // Refresh failed, clear tokens
         console.error("Session validation: Refresh failed:", error);
-        AuthTokenService.clearTokens();
-        return false;
+        // Only return false if it was an explicit auth rejection
+        if (
+          error.message === "Session expired" ||
+          error.message === "No refresh token available"
+        ) {
+          return false;
+        }
+        // Network error – trust existing tokens
+        console.log("Session validation: Network error, trusting local tokens");
+        return true;
       }
     }
   } catch (error) {
-    console.error("Session validation error:", error);
-    // If API call fails, try to refresh as a fallback
-    try {
-      console.log(
-        "Session validation: API error, attempting fallback refresh...",
-      );
-      await TokenRefreshManager.refreshToken();
-      return true;
-    } catch (refreshError) {
-      console.error(
-        "Session validation: Fallback refresh also failed:",
-        refreshError,
-      );
-      return false;
-    }
+    // Network error / timeout – DON'T log the user out
+    // Trust local tokens, they'll get validated on the next API call
+    console.warn(
+      "Session validation: Network error, trusting local tokens:",
+      error.message,
+    );
+    return true;
   }
 }
 

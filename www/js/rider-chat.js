@@ -233,6 +233,113 @@ class RiderChatManager {
         transform: scale(0.95);
       }
 
+      /* Chat attach buttons */
+      .rider-chat-attach-btns {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .rider-attach-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        border: none;
+        color: #555;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .rider-attach-btn:hover {
+        background: #e0e0e0;
+        color: var(--primary-black);
+      }
+
+      .rider-attach-btn:active {
+        transform: scale(0.92);
+      }
+
+      .rider-attach-btn.uploading {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      /* Chat image messages */
+      .rider-chat-image-wrapper {
+        cursor: pointer;
+        margin-bottom: 4px;
+      }
+
+      .rider-chat-image-wrapper img {
+        max-width: 220px;
+        max-height: 260px;
+        border-radius: 12px;
+        display: block;
+        object-fit: cover;
+      }
+
+      /* Image fullscreen overlay */
+      .rider-image-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        cursor: zoom-out;
+      }
+
+      .rider-image-overlay img {
+        max-width: 95%;
+        max-height: 90vh;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+
+      .rider-image-overlay .close-overlay {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+      }
+
+      /* Upload progress */
+      .rider-upload-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(255,193,7,0.15);
+        border-radius: 12px;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+      }
+
+      .rider-upload-spinner {
+        width: 16px; height: 16px;
+        border: 2px solid #ddd;
+        border-top-color: var(--primary-yellow);
+        border-radius: 50%;
+        animation: riderSpinUpload 0.6s linear infinite;
+      }
+
+      @keyframes riderSpinUpload {
+        to { transform: rotate(360deg); }
+      }
+
       /* Message bubbles */
       .rider-message-group {
         display: flex;
@@ -563,11 +670,21 @@ class RiderChatManager {
         <div class="rider-chat-system-msg">Loading messages...</div>
       </div>
       <div class="rider-chat-input-area">
+        <div class="rider-chat-attach-btns">
+          <button class="rider-attach-btn" id="riderGalleryBtn" title="Send photo from gallery">
+            <i class="fa-solid fa-image"></i>
+          </button>
+          <button class="rider-attach-btn" id="riderCameraBtn" title="Take photo with camera">
+            <i class="fa-solid fa-camera"></i>
+          </button>
+        </div>
         <input type="text" class="rider-chat-input" id="riderChatInput" 
                placeholder="Type a message..." autocomplete="off">
         <button class="rider-chat-send" id="riderChatSend">
           <i class="fa-solid fa-paper-plane"></i>
         </button>
+        <input type="file" id="riderGalleryInput" accept="image/*" style="display:none">
+        <input type="file" id="riderCameraInput" accept="image/*" capture="environment" style="display:none">
       </div>
     `;
     document.body.appendChild(panel);
@@ -610,6 +727,28 @@ class RiderChatManager {
         if (e.key === "Enter") this.sendMessage();
       });
       input.addEventListener("input", () => this.startTyping());
+    }
+
+    // Gallery button
+    const galleryBtn = document.getElementById("riderGalleryBtn");
+    const galleryInput = document.getElementById("riderGalleryInput");
+    if (galleryBtn && galleryInput) {
+      galleryBtn.addEventListener("click", () => galleryInput.click());
+      galleryInput.addEventListener("change", (e) => {
+        if (e.target.files?.[0]) this.sendImage(e.target.files[0]);
+        e.target.value = "";
+      });
+    }
+
+    // Camera button
+    const cameraBtn = document.getElementById("riderCameraBtn");
+    const cameraInput = document.getElementById("riderCameraInput");
+    if (cameraBtn && cameraInput) {
+      cameraBtn.addEventListener("click", () => cameraInput.click());
+      cameraInput.addEventListener("change", (e) => {
+        if (e.target.files?.[0]) this.sendImage(e.target.files[0]);
+        e.target.value = "";
+      });
     }
 
     // Message nav click
@@ -1544,6 +1683,74 @@ class RiderChatManager {
     this.stopTyping();
   }
 
+  // ── Send image ───────────────────────────────────────────
+  async sendImage(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      this.showSystem("Please select an image file.");
+      return;
+    }
+
+    // Max 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      this.showSystem("Image too large. Max 10MB.");
+      return;
+    }
+
+    // Show upload progress
+    const progressEl = document.createElement("div");
+    progressEl.className = "rider-upload-progress";
+    progressEl.innerHTML = `<div class="rider-upload-spinner"></div> Uploading image...`;
+    this.chatContainer?.appendChild(progressEl);
+    this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+
+    // Disable attach buttons while uploading
+    const galleryBtn = document.getElementById("riderGalleryBtn");
+    const cameraBtn = document.getElementById("riderCameraBtn");
+    galleryBtn?.classList.add("uploading");
+    cameraBtn?.classList.add("uploading");
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${PASUGO_API_BASE}/api/uploads/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const result = await res.json();
+      const imageUrl = result.data?.url;
+      if (!imageUrl) throw new Error("No URL returned");
+
+      // Send via WebSocket
+      const payload = {
+        event: "send_message",
+        content: "📷 Photo",
+        message_type: "image",
+        attachment_url: imageUrl,
+        attachment_type: "image",
+      };
+
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(payload));
+      } else {
+        this.messageQueue.push(payload);
+        this.scheduleReconnect();
+      }
+    } catch (err) {
+      console.error("[RiderChat] Image upload error:", err);
+      this.showSystem("Failed to send image. Please try again.");
+    } finally {
+      progressEl?.remove();
+      galleryBtn?.classList.remove("uploading");
+      cameraBtn?.classList.remove("uploading");
+    }
+  }
+
   // ── Typing indicators ────────────────────────────────────
   startTyping() {
     if (!this.isConnected) return;
@@ -1663,12 +1870,24 @@ class RiderChatManager {
         })
       : "";
 
+    // Build message content (image or text)
+    let contentHtml = "";
+    if (msg.message_type === "image" && msg.attachment_url) {
+      contentHtml = `
+        <div class="rider-chat-image-wrapper" onclick="window.riderChatManager.openImageOverlay('${msg.attachment_url}')">
+          <img src="${msg.attachment_url}" alt="Photo" loading="lazy" 
+               onerror="this.parentElement.innerHTML='<em style=\'color:#999\'>Image unavailable</em>'">
+        </div>`;
+    } else {
+      contentHtml = this.escape(msg.content || "");
+    }
+
     const group = document.createElement("div");
     group.className = `rider-message-group ${isOwn ? "rider" : "customer"}`;
     group.dataset.msgId = msg.message_id;
     group.innerHTML = `
       <div class="rider-message-bubble ${isOwn ? "rider" : "customer"}">
-        ${this.escape(msg.content || "")}
+        ${contentHtml}
         <span class="rider-msg-meta">
           <span class="rider-msg-time">${time}</span>
           ${isOwn ? `<span class="rider-msg-status" data-id="${msg.message_id}">✓</span>` : ""}
@@ -1839,6 +2058,25 @@ class RiderChatManager {
     } catch {
       return null;
     }
+  }
+
+  // ── Image overlay (full screen view) ──────────────────────
+  openImageOverlay(url) {
+    // Remove existing overlay if any
+    document.querySelector(".rider-image-overlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "rider-image-overlay";
+    overlay.innerHTML = `
+      <button class="close-overlay"><i class="fa-solid fa-xmark"></i></button>
+      <img src="${url}" alt="Full size photo">
+    `;
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay || e.target.closest(".close-overlay")) {
+        overlay.remove();
+      }
+    });
+    document.body.appendChild(overlay);
   }
 
   escape(text) {

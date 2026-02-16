@@ -133,6 +133,76 @@ class ChatManager {
     this.stopTyping();
   }
 
+  // ── Send image ───────────────────────────────────────────
+  async sendImage(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      this.showSystem("Please select an image file.");
+      return;
+    }
+
+    // Max 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      this.showSystem("Image too large. Max 10MB.");
+      return;
+    }
+
+    const container = this.ctrl.chatContainer;
+
+    // Show upload progress
+    const progressEl = document.createElement("div");
+    progressEl.className = "chat-upload-progress";
+    progressEl.innerHTML = `<div class="chat-upload-spinner"></div> Uploading image...`;
+    container?.appendChild(progressEl);
+    if (container) container.scrollTop = container.scrollHeight;
+
+    // Disable attach buttons
+    const galleryBtn = document.getElementById("chatGalleryBtn");
+    const cameraBtn = document.getElementById("chatCameraBtn");
+    galleryBtn?.classList.add("uploading");
+    cameraBtn?.classList.add("uploading");
+
+    try {
+      const token = localStorage.getItem("access_token");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${PASUGO_API_BASE}/api/uploads/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const result = await res.json();
+      const imageUrl = result.data?.url;
+      if (!imageUrl) throw new Error("No URL returned");
+
+      // Send via WebSocket
+      const payload = {
+        event: "send_message",
+        content: "\ud83d\udcf7 Photo",
+        message_type: "image",
+        attachment_url: imageUrl,
+        attachment_type: "image",
+      };
+
+      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(payload));
+      } else {
+        this.messageQueue.push(payload);
+        this.scheduleReconnect();
+      }
+    } catch (err) {
+      console.error("[Chat] Image upload error:", err);
+      this.showSystem("Failed to send image. Please try again.");
+    } finally {
+      progressEl?.remove();
+      galleryBtn?.classList.remove("uploading");
+      cameraBtn?.classList.remove("uploading");
+    }
+  }
+
   // ── Typing ───────────────────────────────────────────────
   startTyping() {
     if (!this.isConnected) return;
@@ -236,12 +306,24 @@ class ChatManager {
         })
       : "";
 
+    // Build message content (image or text)
+    let contentHtml = "";
+    if (msg.message_type === "image" && msg.attachment_url) {
+      contentHtml = `
+        <div class="chat-image-wrapper" onclick="window._chatImageOverlay('${msg.attachment_url}')">
+          <img src="${msg.attachment_url}" alt="Photo" loading="lazy"
+               onerror="this.parentElement.innerHTML='<em style=\'color:#999\'>Image unavailable</em>'">
+        </div>`;
+    } else {
+      contentHtml = this.escape(msg.content || "");
+    }
+
     const group = document.createElement("div");
     group.className = `message-group ${isOwn ? "customer" : "rider"}`;
     group.dataset.msgId = msg.message_id;
     group.innerHTML = `
       <div class="message-bubble ${isOwn ? "customer" : "rider"}">
-        ${this.escape(msg.content || "")}
+        ${contentHtml}
         <span class="msg-meta">
           <span class="msg-time">${time}</span>
           ${isOwn ? `<span class="msg-status" data-id="${msg.message_id}">✓</span>` : ""}
@@ -324,6 +406,23 @@ class ChatManager {
     return d.innerHTML;
   }
 }
+
+// ── Global image overlay for customer chat ─────────────────
+window._chatImageOverlay = function (url) {
+  document.querySelector(".chat-image-overlay")?.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "chat-image-overlay";
+  overlay.innerHTML = `
+    <button class="chat-overlay-close"><i class="fa-solid fa-xmark"></i></button>
+    <img src="${url}" alt="Full size photo">
+  `;
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay || e.target.closest(".chat-overlay-close")) {
+      overlay.remove();
+    }
+  });
+  document.body.appendChild(overlay);
+};
 
 // ── Inject chat CSS ────────────────────────────────────────
 (function injectChatStyles() {
@@ -627,6 +726,27 @@ class RequestModalController {
       }
     });
     this.messageInput?.addEventListener("input", () => this.chat.startTyping());
+
+    // 📷 Chat image upload / camera
+    const chatGalleryBtn = document.getElementById("chatGalleryBtn");
+    const chatGalleryInput = document.getElementById("chatGalleryInput");
+    if (chatGalleryBtn && chatGalleryInput) {
+      chatGalleryBtn.addEventListener("click", () => chatGalleryInput.click());
+      chatGalleryInput.addEventListener("change", (e) => {
+        if (e.target.files?.[0]) this.chat.sendImage(e.target.files[0]);
+        e.target.value = "";
+      });
+    }
+
+    const chatCameraBtn = document.getElementById("chatCameraBtn");
+    const chatCameraInput = document.getElementById("chatCameraInput");
+    if (chatCameraBtn && chatCameraInput) {
+      chatCameraBtn.addEventListener("click", () => chatCameraInput.click());
+      chatCameraInput.addEventListener("change", (e) => {
+        if (e.target.files?.[0]) this.chat.sendImage(e.target.files[0]);
+        e.target.value = "";
+      });
+    }
 
     this.riderCallBtn?.addEventListener("click", () =>
       alert("Calling rider feature - integrate with Twilio"),

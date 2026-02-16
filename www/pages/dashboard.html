@@ -862,6 +862,22 @@
 
         <!-- Message Input -->
         <div class="message-input-section">
+          <div class="chat-attach-btns">
+            <button
+              class="chat-attach-btn"
+              id="chatGalleryBtn"
+              title="Send photo from gallery"
+            >
+              <i class="fa-solid fa-image"></i>
+            </button>
+            <button
+              class="chat-attach-btn"
+              id="chatCameraBtn"
+              title="Take photo with camera"
+            >
+              <i class="fa-solid fa-camera"></i>
+            </button>
+          </div>
           <input
             type="text"
             id="messageInput"
@@ -871,6 +887,19 @@
           <button class="btn-send" id="sendMessageBtn">
             <i class="fa-solid fa-paper-plane"></i>
           </button>
+          <input
+            type="file"
+            id="chatGalleryInput"
+            accept="image/*"
+            style="display: none"
+          />
+          <input
+            type="file"
+            id="chatCameraInput"
+            accept="image/*"
+            capture="environment"
+            style="display: none"
+          />
         </div>
       </div>
     </div>

@@ -1074,6 +1074,121 @@
   transform: scale(0.95);
 }
 
+/* ===== CHAT ATTACH BUTTONS ===== */
+.chat-attach-btns {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.chat-attach-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  border: none;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.chat-attach-btn:hover {
+  background: #e0e0e0;
+  color: #222;
+}
+
+.chat-attach-btn:active {
+  transform: scale(0.92);
+}
+
+.chat-attach-btn.uploading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ===== CHAT IMAGE MESSAGES ===== */
+.chat-image-wrapper {
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.chat-image-wrapper img {
+  max-width: 200px;
+  max-height: 240px;
+  border-radius: 10px;
+  display: block;
+  object-fit: cover;
+}
+
+/* ===== IMAGE FULLSCREEN OVERLAY ===== */
+.chat-image-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: zoom-out;
+}
+
+.chat-image-overlay img {
+  max-width: 95%;
+  max-height: 90vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.chat-overlay-close {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 100000;
+}
+
+/* ===== UPLOAD PROGRESS ===== */
+.chat-upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 193, 7, 0.15);
+  border-radius: 12px;
+  font-size: 12px;
+  color: #666;
+  margin: 6px auto;
+  max-width: 200px;
+}
+
+.chat-upload-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ddd;
+  border-top-color: #ffc107;
+  border-radius: 50%;
+  animation: chatSpinUpload 0.6s linear infinite;
+}
+
+@keyframes chatSpinUpload {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ===== ANIMATIONS ===== */
 @keyframes slideInUp {
   from {
