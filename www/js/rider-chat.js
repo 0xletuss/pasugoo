@@ -22,6 +22,7 @@ class RiderChatManager {
     this.unreadCount = 0;
     this.currentRequestStatus = null;
     this.currentRequestDetails = null;
+    this.statusPollInterval = null;
 
     // DOM elements (will be set when panel is created)
     this.chatPanel = null;
@@ -701,6 +702,9 @@ class RiderChatManager {
       // Fetch and display request details
       await this.fetchRequestDetails();
 
+      // Start periodic status polling to detect external completions
+      this.startStatusPolling();
+
       // Update badge on message nav
       this.updateChatBadge();
     } catch (err) {
@@ -768,6 +772,8 @@ class RiderChatManager {
   disconnect() {
     console.log("🔌 [RiderChat] Disconnecting...");
     clearInterval(this.pingInterval);
+    clearInterval(this.statusPollInterval);
+    this.statusPollInterval = null;
     clearTimeout(this.typingTimeout);
     if (this.ws) {
       this.ws.close(1000);
@@ -781,6 +787,52 @@ class RiderChatManager {
     this.messageQueue = [];
     this.clearActiveRequest();
     this.closeChat();
+  }
+
+  // ── Periodic status polling (detects external status changes) ──
+  startStatusPolling() {
+    if (this.statusPollInterval) {
+      clearInterval(this.statusPollInterval);
+    }
+    this.statusPollInterval = setInterval(async () => {
+      if (!this.requestId) {
+        clearInterval(this.statusPollInterval);
+        this.statusPollInterval = null;
+        return;
+      }
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(
+          `${PASUGO_API_BASE}/api/requests/${this.requestId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const status = (data.data?.status || "").toLowerCase();
+
+        if (status === "completed" || status === "cancelled") {
+          console.log(
+            `📋 [RiderChat] Request externally ${status}, auto-closing`,
+          );
+          this.showSystem(`This request has been ${status}.`);
+          this.currentRequestDetails = data.data;
+          this.updateTaskActionButtons(status);
+          setTimeout(() => this.disconnect(), 2000);
+          return;
+        }
+
+        // Update details if status changed (e.g. payment_status)
+        if (data.data) {
+          this.currentRequestDetails = data.data;
+          if (this.currentRequestStatus !== status) {
+            this.currentRequestStatus = status;
+            this.updateTaskActionButtons(status);
+          }
+        }
+      } catch (e) {
+        // Silently ignore poll errors
+      }
+    }, 8000); // Poll every 8 seconds
   }
 
   // ── Fetch and display request details ────────────────────
@@ -804,7 +856,21 @@ class RiderChatManager {
       const request = data.data;
       this.currentRequestDetails = request;
 
+      const reqStatus = (request.status || "").toLowerCase();
       this.currentRequestStatus = request.status;
+
+      // Auto-close chat if request is already completed or cancelled
+      if (reqStatus === "completed" || reqStatus === "cancelled") {
+        console.log(
+          `📋 [RiderChat] Request is ${reqStatus}, auto-closing chat`,
+        );
+        this.showSystem(`This request has been ${reqStatus}.`);
+        setTimeout(() => {
+          this.disconnect();
+        }, 1500);
+        return;
+      }
+
       this.displayTaskDetails(request);
       this.updateTaskActionButtons(request.status);
 
@@ -916,11 +982,27 @@ class RiderChatManager {
         `;
       } else {
         html += `
-          <div style="background:#f0f7ff;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px">
-            <div style="font-weight:600;color:#0066cc;margin-bottom:4px"><i class="fa-solid fa-receipt"></i> Bill Sent</div>
-            <div>Items: ₱${parseFloat(req.item_cost).toFixed(2)} | Fee: ₱${parseFloat(req.service_fee).toFixed(2)}</div>
-            <div style="font-weight:700;margin-top:2px">Total: ₱${parseFloat(req.total_amount).toFixed(2)}</div>
-            <div style="color:#888;margin-top:2px">Payment: ${paymentMethod === "gcash" ? "GCash" : "COD"} | Status: ${paymentStatus}</div>
+          <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:10px;font-family:monospace,sans-serif">
+            <div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:10px;margin-bottom:10px">
+              <div style="font-size:15px;font-weight:700;color:#333"><i class="fa-solid fa-receipt"></i> PASUGO</div>
+              <div style="font-size:11px;color:#888">Transaction Receipt</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+              <span>Item Cost</span>
+              <span>₱${parseFloat(req.item_cost || 0).toFixed(2)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+              <span>Service Fee</span>
+              <span>₱${parseFloat(req.service_fee || 0).toFixed(2)}</span>
+            </div>
+            <div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#333">
+              <span>TOTAL</span>
+              <span>₱${parseFloat(req.total_amount).toFixed(2)}</span>
+            </div>
+            <div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px dashed #ccc;font-size:11px;color:#888">
+              Payment: ${paymentMethod === "gcash" ? "GCash" : "Cash on Delivery"}<br>
+              Status: <span style="color:${paymentStatus === "confirmed" ? "#28a745" : paymentStatus === "submitted" ? "#1565c0" : "#ff9800"};font-weight:600">${paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1)}</span>
+            </div>
           </div>
         `;
       }
@@ -1354,26 +1436,61 @@ class RiderChatManager {
         throw new Error(errData.detail || "Failed to confirm payment");
       }
 
+      const responseData = await res.json();
+
       // Update local state
       if (this.currentRequestDetails) {
         this.currentRequestDetails.payment_status = "confirmed";
       }
 
-      // Re-render buttons
-      this.updateTaskActionButtons(this.currentRequestStatus);
+      // Check if delivery was auto-completed by backend
+      if (responseData.data?.delivery_auto_completed) {
+        this.currentRequestStatus = "completed";
+        this.updateTaskActionButtons("completed");
 
-      // Send chat message
-      if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(
-          JSON.stringify({
-            event: "send_message",
-            content: "✅ Payment received and confirmed! Thank you.",
-            message_type: "text",
-          }),
-        );
+        // Update status badge
+        const taskStatusBadge = document.getElementById("taskStatusBadge");
+        if (taskStatusBadge) {
+          taskStatusBadge.textContent = "Completed";
+          taskStatusBadge.className = "task-status-badge completed";
+        }
+
+        // Send completion chat message
+        if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(
+            JSON.stringify({
+              event: "send_message",
+              content:
+                "✅ Payment confirmed and delivery completed! Thank you for using Pasugo. Have a great day!",
+              message_type: "text",
+            }),
+          );
+        }
+
+        this.showSystem("Payment confirmed & delivery completed!");
+
+        // Close chat after delay
+        setTimeout(() => {
+          alert("Task completed! Great job! 🎉");
+          this.disconnect();
+        }, 2000);
+      } else {
+        // Re-render buttons (payment only confirmed, delivery not auto-completed)
+        this.updateTaskActionButtons(this.currentRequestStatus);
+
+        // Send chat message
+        if (this.isConnected && this.ws?.readyState === WebSocket.OPEN) {
+          this.ws.send(
+            JSON.stringify({
+              event: "send_message",
+              content: "✅ Payment received and confirmed! Thank you.",
+              message_type: "text",
+            }),
+          );
+        }
+
+        this.showSystem("Payment confirmed!");
       }
-
-      this.showSystem("Payment confirmed!");
     } catch (err) {
       console.error("[RiderChat] confirmPayment error:", err);
       alert("Failed to confirm payment: " + err.message);

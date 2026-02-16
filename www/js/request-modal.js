@@ -385,7 +385,6 @@ class RequestModalController {
       deliveryOption: "current-location",
       deliveryAddress: "",
       items: "",
-      budget: 0,
       instructions: "",
       location: null,
       paymentMethod: "cod",
@@ -437,8 +436,6 @@ class RequestModalController {
       "generalFileInput",
       "filePreviewContainer",
       "itemsList",
-      "budgetLimit",
-      "budgetSection",
       "instructions",
       "itemsLabel",
       "itemsHelper",
@@ -461,7 +458,6 @@ class RequestModalController {
       "confVehicleItem",
       "confVehicle",
       "confItems",
-      "confBudget",
       "confLocation",
       "waitingModal",
       "closeWaitingBtn",
@@ -603,6 +599,18 @@ class RequestModalController {
     this.step2Back?.addEventListener("click", () => this.prevStep());
     this.step2Next?.addEventListener("click", () => this.nextStep());
     this.step3Back?.addEventListener("click", () => this.prevStep());
+
+    // Edit summary row buttons (step 3)
+    document
+      .querySelectorAll(".edit-summary-row .edit-row-btn")
+      .forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const row = btn.closest(".edit-summary-row");
+          const step = parseInt(row?.dataset?.editStep || "2");
+          this.goToStep(step);
+        });
+      });
     this.submitRequest?.addEventListener("click", () =>
       this.submitNewRequest(),
     );
@@ -721,6 +729,11 @@ class RequestModalController {
     const titles = ["", "Select Service", "Add Details", "Confirm Request"];
     this.formTitle.textContent = titles[n];
     this.requestModal.scrollTop = 0;
+
+    // Populate editable summary when entering step 3
+    if (n === 3) {
+      this.updateConfirmationDisplay();
+    }
   }
 
   validateStep(step) {
@@ -778,7 +791,6 @@ class RequestModalController {
           return false;
         }
         this.formData.items = itemsText;
-        this.formData.budget = parseFloat(this.budgetLimit.value) || 0;
         this.formData.instructions = this.instructions.value.trim();
         return true;
       default:
@@ -846,14 +858,12 @@ class RequestModalController {
       this.formData.serviceType !== "bills" ? "block" : "none";
 
     if (this.formData.serviceType === "groceries") {
-      this.budgetSection.style.display = "block";
       this.groceriesItemsForm.style.display = "block";
       this.itemsList.style.display = "none";
       this.itemsHelper.style.display = "none";
       this.pickDeliverForm.style.display = "none";
       if (!this.itemsContainer.children.length) this.addItemField();
     } else if (this.formData.serviceType === "delivery") {
-      this.budgetSection.style.display = "none";
       this.groceriesItemsForm.style.display = "none";
       this.pickDeliverForm.style.display = "block";
       this.itemsList.style.display = "none";
@@ -862,7 +872,6 @@ class RequestModalController {
       if (loc) this.currentLocationDisplay.textContent = loc.textContent;
       if (!this.pickupItemsContainer.children.length) this.addPickupItemField();
     } else {
-      this.budgetSection.style.display = "none";
       this.groceriesItemsForm.style.display = "none";
       this.pickDeliverForm.style.display = "none";
       this.itemsList.style.display = "block";
@@ -1087,7 +1096,6 @@ class RequestModalController {
       const result = await pasugoAPI.createRequest({
         serviceType: this.formData.serviceType,
         itemsDescription: this.formData.items,
-        budgetLimit: this.formData.budget || null,
         specialInstructions: this.formData.instructions || null,
         pickupLocation: this.formData.pickupLocation || null,
         deliveryAddress: this.formData.deliveryAddress || null,
@@ -1101,6 +1109,10 @@ class RequestModalController {
       }
 
       this.requestId = result.data.request_id;
+
+      // Upload bill photos and files to Cloudinary in background
+      this.uploadMediaToCloudinary(this.requestId);
+
       this.requestStatus = "waiting";
       this.saveRequestState();
       this.requestModalOverlay.style.display = "none";
@@ -1110,6 +1122,62 @@ class RequestModalController {
     } finally {
       this.submitRequest.disabled = false;
       this.submitRequest.innerHTML = "Find a Rider";
+    }
+  }
+
+  // ── Upload media to Cloudinary after request creation ────
+  async uploadMediaToCloudinary(requestId) {
+    try {
+      // Upload bill photos
+      for (const photo of this.formData.billPhotos) {
+        try {
+          const uploadResult = await pasugoAPI.uploadBase64Image(
+            photo.data,
+            photo.name,
+          );
+          if (uploadResult.success) {
+            await pasugoAPI.addBillPhoto(
+              requestId,
+              uploadResult.data.url,
+              photo.name,
+              photo.size,
+            );
+            console.log(
+              "📸 Bill photo uploaded to Cloudinary:",
+              uploadResult.data.url,
+            );
+          }
+        } catch (err) {
+          console.warn("Failed to upload bill photo:", err);
+        }
+      }
+
+      // Upload attached files
+      for (const file of this.formData.attachedFiles) {
+        try {
+          const uploadResult = await pasugoAPI.uploadBase64Image(
+            file.data,
+            file.name,
+          );
+          if (uploadResult.success) {
+            await pasugoAPI.addAttachment(
+              requestId,
+              file.name,
+              uploadResult.data.url,
+              file.type,
+              file.size,
+            );
+            console.log(
+              "📎 File uploaded to Cloudinary:",
+              uploadResult.data.url,
+            );
+          }
+        } catch (err) {
+          console.warn("Failed to upload attachment:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Media upload error:", err);
     }
   }
 
@@ -1284,7 +1352,7 @@ class RequestModalController {
     }
   }
 
-  // ── Confirmation display ──────────────────────────────────
+  // ── Confirmation display (Step 3 editable summary) ─────
   updateConfirmationDisplay() {
     const sNames = {
       groceries: "Buy Groceries",
@@ -1309,23 +1377,36 @@ class RequestModalController {
     if (this.formData.serviceType === "delivery") {
       items = `From: ${this.formData.pickupLocation} → ${this.formData.deliveryOption === "current-location" ? "Your Location" : this.formData.deliveryAddress}`;
     } else if (this.formData.serviceType === "bills") {
-      items = `[${this.formData.billPhotos.length} photo(s)]`;
+      items = `${this.formData.billPhotos.length} photo(s)`;
       if (this.formData.attachedFiles.length)
         items += ` + ${this.formData.attachedFiles.length} file(s)`;
     } else {
       items =
-        this.formData.items.substring(0, 50) +
-        (this.formData.items.length > 50 ? "..." : "");
+        this.formData.items.substring(0, 80) +
+        (this.formData.items.length > 80 ? "..." : "");
       if (this.formData.attachedFiles.length)
         items += ` [${this.formData.attachedFiles.length} file(s)]`;
     }
 
     this.confItems.textContent = items;
-    this.confBudget.textContent = this.formData.budget
-      ? `₱${this.formData.budget.toFixed(2)}`
-      : "No limit";
+
     const loc = document.getElementById("locationName");
     if (loc) this.confLocation.textContent = loc.textContent;
+
+    // Instructions row
+    const instrRow = document.getElementById("editInstructionsRow");
+    const instrVal = document.getElementById("confInstructions");
+    if (instrRow && instrVal) {
+      const instr =
+        this.formData.instructions || this.instructions?.value?.trim();
+      if (instr) {
+        instrRow.style.display = "flex";
+        instrVal.textContent =
+          instr.substring(0, 80) + (instr.length > 80 ? "..." : "");
+      } else {
+        instrRow.style.display = "none";
+      }
+    }
   }
 
   async cancelRequest() {
@@ -1503,8 +1584,8 @@ class RequestModalController {
     banner.style.display = "flex";
 
     // Show payment reminder
-    if (request.total_cost || request.budget) {
-      const cost = request.total_cost || request.budget;
+    if (request.total_cost || request.total_amount) {
+      const cost = request.total_cost || request.total_amount;
       setTimeout(() => {
         this.showPaymentReminder(cost, request.service_fee || 0);
       }, 2000);
@@ -1530,29 +1611,30 @@ class RequestModalController {
 
     const total = parseFloat(totalCost) + parseFloat(serviceFee);
     reminder.innerHTML = `
-      <div style="font-weight:600;color:#856404;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-        <i class="fa-solid fa-peso-sign"></i> Payment Summary
-      </div>
-      <div style="font-size:13px;color:#333;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span>Items Cost:</span>
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;font-family:monospace,sans-serif">
+        <div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:10px;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:700;color:#333"><i class="fa-solid fa-receipt"></i> PASUGO</div>
+          <div style="font-size:11px;color:#888">Payment Summary</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+          <span>Item Cost</span>
           <span>₱${parseFloat(totalCost).toFixed(2)}</span>
         </div>
         ${
           serviceFee
-            ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span>Service Fee:</span>
+            ? `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+          <span>Service Fee</span>
           <span>₱${parseFloat(serviceFee).toFixed(2)}</span>
         </div>`
             : ""
         }
-        <div style="display:flex;justify-content:space-between;font-weight:600;border-top:1px solid #ddd;padding-top:8px;margin-top:8px;">
-          <span>Total to Pay:</span>
-          <span style="color:#28a745;font-size:16px;">₱${total.toFixed(2)}</span>
+        <div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#333">
+          <span>TOTAL</span>
+          <span style="color:#28a745">₱${total.toFixed(2)}</span>
         </div>
-      </div>
-      <div style="font-size:11px;color:#666;margin-top:10px;text-align:center;">
-        <i class="fa-solid fa-info-circle"></i> Please prepare exact payment for the rider
+        <div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px dashed #ccc;font-size:11px;color:#888">
+          Please prepare exact payment for the rider
+        </div>
       </div>
     `;
     reminder.style.display = "block";
@@ -1571,14 +1653,30 @@ class RequestModalController {
 
     panel.style.display = "block";
 
-    // Build bill breakdown
+    // Build bill breakdown - receipt style
     const breakdown = document.getElementById("billBreakdown");
     if (breakdown) {
       breakdown.innerHTML = `
-        <div class="bill-breakdown-card">
-          <div class="bill-row"><span>Item Cost</span><span>₱${parseFloat(request.item_cost || 0).toFixed(2)}</span></div>
-          <div class="bill-row"><span>Service Fee</span><span>₱${parseFloat(request.service_fee || 0).toFixed(2)}</span></div>
-          <div class="bill-row total"><span>Total</span><span>₱${parseFloat(totalAmount).toFixed(2)}</span></div>
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;font-family:monospace,sans-serif">
+          <div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:10px;margin-bottom:10px">
+            <div style="font-size:15px;font-weight:700;color:#333"><i class="fa-solid fa-receipt"></i> PASUGO</div>
+            <div style="font-size:11px;color:#888">Transaction Receipt</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+            <span>Item Cost</span>
+            <span>₱${parseFloat(request.item_cost || 0).toFixed(2)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#555">
+            <span>Service Fee</span>
+            <span>₱${parseFloat(request.service_fee || 0).toFixed(2)}</span>
+          </div>
+          <div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:#333">
+            <span>TOTAL</span>
+            <span style="color:#28a745">₱${parseFloat(totalAmount).toFixed(2)}</span>
+          </div>
+          <div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px dashed #ccc;font-size:11px;color:#888">
+            Thank you for using Pasugo!
+          </div>
         </div>
       `;
     }
@@ -1772,7 +1870,7 @@ class RequestModalController {
         
         <div style="background:#f8f9fa;padding:15px;border-radius:12px;margin-bottom:20px;">
           <div style="font-size:13px;color:#666;margin-bottom:5px;">Total Paid</div>
-          <div style="font-size:24px;font-weight:600;color:#28a745;">₱${parseFloat(request.total_cost || request.budget || 0).toFixed(2)}</div>
+          <div style="font-size:24px;font-weight:600;color:#28a745;">₱${parseFloat(request.total_amount || request.total_cost || 0).toFixed(2)}</div>
         </div>
         
         <button id="rateRiderBtn" style="width:100%;padding:14px;background:var(--primary-yellow, #ffc107);color:#000;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px;">
@@ -1922,7 +2020,6 @@ class RequestModalController {
       deliveryOption: "current-location",
       deliveryAddress: "",
       items: "",
-      budget: 0,
       instructions: "",
       location: null,
       paymentMethod: "cod",
@@ -1945,7 +2042,6 @@ class RequestModalController {
     this.vehicleSection.style.display = "none";
     this.billPhotoSection.style.display = "none";
     this.fileUploadSection.style.display = "none";
-    this.budgetSection.style.display = "none";
     this.groceriesItemsForm.style.display = "none";
     this.pickDeliverForm.style.display = "none";
     this.itemsList.style.display = "block";
@@ -1960,7 +2056,6 @@ class RequestModalController {
       this.billPhotoInput,
       this.generalFileInput,
       this.itemsList,
-      this.budgetLimit,
       this.pickupLocation,
       this.deliveryAddress,
       this.instructions,

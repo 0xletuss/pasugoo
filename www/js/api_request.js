@@ -707,6 +707,82 @@ class PasugoAPI {
     }
   }
 
+  // ===== CLOUDINARY UPLOADS =====
+
+  /**
+   * Upload an image to Cloudinary via backend
+   * @param {File|Blob} file - The file to upload
+   * @returns {Promise<Object>} - {success, data: {url, public_id, ...}}
+   */
+  async uploadImage(file) {
+    try {
+      this.updateToken();
+      if (!this.token) throw new Error("Not authenticated");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${this.baseURL}/uploads/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.token}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Image upload failed");
+
+      return { success: true, data: data.data };
+    } catch (error) {
+      return this.handleError(error, "uploadImage");
+    }
+  }
+
+  /**
+   * Upload any file to Cloudinary via backend
+   * @param {File|Blob} file - The file to upload
+   * @returns {Promise<Object>} - {success, data: {url, public_id, ...}}
+   */
+  async uploadFile(file) {
+    try {
+      this.updateToken();
+      if (!this.token) throw new Error("Not authenticated");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${this.baseURL}/uploads/file`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.token}` },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "File upload failed");
+
+      return { success: true, data: data.data };
+    } catch (error) {
+      return this.handleError(error, "uploadFile");
+    }
+  }
+
+  /**
+   * Upload a base64 data URL as an image to Cloudinary
+   * Converts base64 to Blob first, then uploads
+   * @param {string} dataUrl - base64 data URL
+   * @param {string} filename - original filename
+   * @returns {Promise<Object>}
+   */
+  async uploadBase64Image(dataUrl, filename = "image.jpg") {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: blob.type });
+      return this.uploadImage(file);
+    } catch (error) {
+      return this.handleError(error, "uploadBase64Image");
+    }
+  }
+
   // ===== HEALTH CHECK =====
 
   /**

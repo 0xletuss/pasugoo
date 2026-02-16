@@ -546,19 +546,6 @@
               <small id="itemsHelper">List all items you need</small>
             </div>
 
-            <div id="budgetSection" style="display: none">
-              <div class="form-group">
-                <label>Budget Limit (PHP)</label>
-                <input
-                  type="number"
-                  id="budgetLimit"
-                  placeholder="Enter maximum amount"
-                  min="0"
-                />
-                <small>Optional - rider will try to stay within this</small>
-              </div>
-            </div>
-
             <div class="form-group">
               <label>Special Instructions</label>
               <textarea
@@ -578,26 +565,77 @@
           <div class="form-step" id="step3">
             <h3>Confirm Your Request</h3>
 
-            <div class="confirmation-card">
-              <div class="conf-item">
-                <span class="label">Service Type:</span>
-                <span class="value" id="confService">-</span>
+            <!-- Editable Summary -->
+            <div id="editSummaryPanel" class="edit-summary-panel">
+              <div class="edit-summary-header">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>Review & Edit</span>
               </div>
-              <div class="conf-item" id="confVehicleItem" style="display: none">
-                <span class="label">Vehicle:</span>
-                <span class="value" id="confVehicle">-</span>
-              </div>
-              <div class="conf-item">
-                <span class="label">Items:</span>
-                <span class="value" id="confItems">-</span>
-              </div>
-              <div class="conf-item">
-                <span class="label">Budget:</span>
-                <span class="value" id="confBudget">-</span>
-              </div>
-              <div class="conf-item">
-                <span class="label">Pickup/Delivery:</span>
-                <span class="value" id="confLocation">-</span>
+              <div class="edit-summary-body">
+                <div
+                  class="edit-summary-row"
+                  id="editServiceRow"
+                  data-edit-step="1"
+                >
+                  <div class="edit-row-left">
+                    <span class="es-label">Service</span>
+                    <span class="es-value" id="confService">-</span>
+                  </div>
+                  <button class="edit-row-btn" title="Change service">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
+                <div
+                  class="edit-summary-row"
+                  id="confVehicleItem"
+                  data-edit-step="2"
+                  style="display: none"
+                >
+                  <div class="edit-row-left">
+                    <span class="es-label">Vehicle</span>
+                    <span class="es-value" id="confVehicle">-</span>
+                  </div>
+                  <button class="edit-row-btn" title="Change vehicle">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
+                <div
+                  class="edit-summary-row"
+                  id="editItemsRow"
+                  data-edit-step="2"
+                >
+                  <div class="edit-row-left">
+                    <span class="es-label">Items</span>
+                    <span class="es-value" id="confItems">-</span>
+                  </div>
+                  <button class="edit-row-btn" title="Edit items">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
+                <div
+                  class="edit-summary-row"
+                  id="editLocationRow"
+                  data-edit-step="2"
+                >
+                  <div class="edit-row-left">
+                    <span class="es-label">Location</span>
+                    <span class="es-value" id="confLocation">-</span>
+                  </div>
+                </div>
+                <div
+                  class="edit-summary-row"
+                  id="editInstructionsRow"
+                  data-edit-step="2"
+                  style="display: none"
+                >
+                  <div class="edit-row-left">
+                    <span class="es-label">Notes</span>
+                    <span class="es-value" id="confInstructions">-</span>
+                  </div>
+                  <button class="edit-row-btn" title="Edit notes">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                </div>
               </div>
             </div>
 

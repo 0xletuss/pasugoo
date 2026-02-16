@@ -1092,7 +1092,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // If on login/register page and already logged in, redirect to appropriate dashboard
-  const authPages = ["login.html", "register.html"];
+  const authPages = ["login.html", "register.html", "rider-register.html"];
   if (authPages.some((page) => currentPage.includes(page))) {
     console.log(
       "Auth module: Auth page detected, checking if already logged in...",

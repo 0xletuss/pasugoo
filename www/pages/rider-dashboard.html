@@ -887,8 +887,34 @@
           });
         }
 
-        function updateOnlineStatus(online) {
+        async function updateOnlineStatus(online) {
           const btn = document.getElementById("toggleOnlineBtn");
+          const newStatus = online ? "available" : "offline";
+
+          // Update backend availability status
+          try {
+            const token = localStorage.getItem("access_token");
+            const res = await fetch(
+              "https://pasugo.onrender.com/api/riders/status",
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ status: newStatus }),
+              },
+            );
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              console.error("Failed to update rider status:", err);
+            } else {
+              console.log(`✅ Rider status updated to: ${newStatus}`);
+            }
+          } catch (e) {
+            console.error("Error updating rider status:", e);
+          }
+
           if (online) {
             btn.innerHTML =
               '<i class="fa-solid fa-circle" style="color: #28a745;"></i> Go Offline';
