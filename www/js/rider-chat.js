@@ -111,8 +111,8 @@ class RiderChatManager {
         bottom: calc(70px + env(safe-area-inset-bottom, 0px));
         left: 0;
         right: 0;
-        height: 60vh;
-        max-height: calc(100vh - 150px);
+        height: 75vh;
+        max-height: calc(100vh - 100px);
         background: #fff;
         border-top-left-radius: 25px;
         border-top-right-radius: 25px;
@@ -136,22 +136,23 @@ class RiderChatManager {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 15px 20px;
+        padding: 12px 16px;
         border-bottom: 1px solid #eee;
         background: var(--primary-black);
         color: white;
         border-radius: 25px 25px 0 0;
+        flex-shrink: 0;
       }
 
       .rider-chat-header .customer-info {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
       }
 
       .rider-chat-header .customer-avatar {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background: var(--primary-yellow);
         display: flex;
@@ -185,25 +186,28 @@ class RiderChatManager {
         overflow-y: auto;
         padding: 15px;
         background: #f8f9fa;
-        min-height: 120px;
+        min-height: 0;
       }
 
       .rider-chat-input-area {
         display: flex;
-        gap: 10px;
-        padding: 12px 15px;
+        gap: 8px;
+        padding: 10px 12px;
         background: white;
         border-top: 1px solid #eee;
+        flex-shrink: 0;
+        align-items: center;
       }
 
       .rider-chat-input {
         flex: 1;
-        padding: 12px 16px;
+        padding: 10px 14px;
         border: 2px solid #eee;
         border-radius: 25px;
         font-size: 14px;
         outline: none;
         transition: border-color 0.2s;
+        min-width: 0;
       }
 
       .rider-chat-input:focus {
@@ -211,18 +215,19 @@ class RiderChatManager {
       }
 
       .rider-chat-send {
-        width: 48px;
-        height: 48px;
+        width: 42px;
+        height: 42px;
         border-radius: 50%;
         background: var(--primary-yellow);
         border: none;
         color: var(--primary-black);
-        font-size: 18px;
+        font-size: 16px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: transform 0.2s;
+        flex-shrink: 0;
       }
 
       .rider-chat-send:hover {
@@ -241,13 +246,13 @@ class RiderChatManager {
       }
 
       .rider-attach-btn {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background: #f0f0f0;
         border: none;
         color: #555;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -483,17 +488,17 @@ class RiderChatManager {
       .rider-task-panel {
         background: #f8f9fa;
         border-bottom: 1px solid #eee;
-        padding: 12px 15px;
-        max-height: 150px;
+        padding: 10px 15px;
+        max-height: 40vh;
         overflow-y: auto;
         flex-shrink: 0;
         transition: max-height 0.3s ease, padding 0.3s ease;
       }
 
       .rider-task-panel.collapsed {
-        max-height: 45px;
+        max-height: 40px;
         overflow: hidden;
-        padding: 10px 15px;
+        padding: 8px 15px;
       }
 
       .rider-task-panel.collapsed .task-items-list,
@@ -502,11 +507,16 @@ class RiderChatManager {
         display: none;
       }
 
+      .rider-task-panel.collapsed .task-panel-header {
+        margin-bottom: 0;
+      }
+
       .task-panel-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
       }
 
       .task-panel-header h4 {
@@ -530,11 +540,13 @@ class RiderChatManager {
       .task-items-list {
         background: white;
         border-radius: 10px;
-        padding: 10px;
-        font-size: 13px;
-        line-height: 1.6;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.5;
         color: #333;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        max-height: 80px;
+        overflow-y: auto;
       }
 
       .task-meta {
@@ -554,14 +566,14 @@ class RiderChatManager {
 
       .task-action-btns {
         display: flex;
-        gap: 8px;
+        flex-direction: column;
+        gap: 6px;
       }
 
       .task-action-btn {
-        flex: 1;
-        padding: 12px;
+        padding: 10px;
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
@@ -570,6 +582,7 @@ class RiderChatManager {
         justify-content: center;
         gap: 6px;
         transition: all 0.2s;
+        width: 100%;
       }
 
       .task-action-btn.primary {
@@ -784,10 +797,10 @@ class RiderChatManager {
       );
     }
 
-    // Task panel toggle
-    const taskToggleBtn = document.getElementById("taskToggleBtn");
-    if (taskToggleBtn) {
-      taskToggleBtn.addEventListener("click", () => this.toggleTaskPanel());
+    // Task panel toggle — whole header is clickable
+    const taskPanelHeader = document.querySelector(".task-panel-header");
+    if (taskPanelHeader) {
+      taskPanelHeader.addEventListener("click", () => this.toggleTaskPanel());
     }
   }
 
