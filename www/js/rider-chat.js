@@ -55,63 +55,96 @@ class RiderChatManager {
     const savedRequestId = localStorage.getItem("active_request_id");
     const savedCustomerName = localStorage.getItem("active_request_customer");
 
-    if (!savedRequestId) return;
+    if (savedRequestId) {
+      // We have a saved request — verify and reconnect
+      await this._verifyAndConnect(savedRequestId, savedCustomerName);
+    } else {
+      // No saved request — check backend for any active assigned/in_progress requests
+      console.log("[RiderChat] No saved request, checking backend for active tasks...");
+      await this._recoverFromBackend();
+    }
+  }
 
-    console.log(`🔄 [RiderChat] Restoring request ${savedRequestId}...`);
+  // Check backend for rider's active request and auto-recover
+  async _recoverFromBackend() {
+    try {
+      const fetchFn = typeof authenticatedFetch === "function" ? authenticatedFetch : 
+        (url) => fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } });
+
+      // Check assigned first, then in_progress
+      for (const st of ["assigned", "in_progress"]) {
+        const res = await fetchFn(`${PASUGO_API_BASE}/api/requests/my-requests?status=${st}&page_size=1`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.data?.length > 0) {
+          const req = data.data[0];
+          console.log(`🔄 [RiderChat] Found active ${st} request #${req.request_id} from backend`);
+          // Save to localStorage so future reloads are fast
+          localStorage.setItem("active_request_id", req.request_id);
+          localStorage.setItem("active_request_customer", req.customer_name || "Customer");
+          // Connect
+          this.setCustomerInfo(req.customer_name || "Customer");
+          await this.connect(req.request_id);
+          return;
+        }
+      }
+      console.log("[RiderChat] No active requests found on backend");
+    } catch (e) {
+      console.warn("[RiderChat] Backend recovery failed:", e.message);
+    }
+  }
+
+  // Verify a saved request is still active and connect
+  async _verifyAndConnect(requestId, customerName) {
+    console.log(`🔄 [RiderChat] Restoring request ${requestId}...`);
 
     try {
-      // Verify the request is still active — use authenticatedFetch to auto-refresh tokens
       let res;
       if (typeof authenticatedFetch === "function") {
         res = await authenticatedFetch(
-          `${PASUGO_API_BASE}/api/requests/${savedRequestId}`,
+          `${PASUGO_API_BASE}/api/requests/${requestId}`,
         );
       } else {
         const token = localStorage.getItem("access_token");
-        res = await fetch(`${PASUGO_API_BASE}/api/requests/${savedRequestId}`, {
+        res = await fetch(`${PASUGO_API_BASE}/api/requests/${requestId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
 
       if (!res.ok) {
-        // Only clear on 404 (request truly gone) or 403 (not your request)
         if (res.status === 404 || res.status === 403) {
           console.log("📋 Request no longer accessible, clearing state");
           this.clearActiveRequest();
+          // Try recovering from backend in case there's another active request
+          await this._recoverFromBackend();
           return;
         }
-        // On 401 or other errors, keep state and just try to reconnect anyway
-        console.warn(
-          `[RiderChat] Restore check got ${res.status}, keeping state and trying reconnect...`,
-        );
-        this.setCustomerInfo(savedCustomerName || "Customer");
-        await this.connect(parseInt(savedRequestId, 10));
+        console.warn(`[RiderChat] Restore check got ${res.status}, trying reconnect anyway...`);
+        this.setCustomerInfo(customerName || "Customer");
+        await this.connect(parseInt(requestId, 10));
         return;
       }
 
       const data = await res.json();
       const status = data.data?.status?.toLowerCase();
 
-      // Check if request is completed or cancelled
       if (status === "completed" || status === "cancelled") {
         console.log(`📋 Request is ${status}, clearing state`);
         this.clearActiveRequest();
         return;
       }
 
-      // Restore chat connection
-      this.setCustomerInfo(savedCustomerName || "Customer");
-      await this.connect(parseInt(savedRequestId, 10));
+      // Update customer name from backend if available
+      const backendCustomerName = data.data?.customer_name || customerName || "Customer";
+      localStorage.setItem("active_request_customer", backendCustomerName);
+
+      this.setCustomerInfo(backendCustomerName);
+      await this.connect(parseInt(requestId, 10));
     } catch (e) {
-      // Network error: don't clear state — keep trying
-      console.error(
-        "Failed to restore request (network error, keeping state):",
-        e,
-      );
-      // Try to reconnect anyway with saved info
+      console.error("Failed to restore request (network error, keeping state):", e);
       try {
-        this.setCustomerInfo(savedCustomerName || "Customer");
-        await this.connect(parseInt(savedRequestId, 10));
+        this.setCustomerInfo(customerName || "Customer");
+        await this.connect(parseInt(requestId, 10));
       } catch (e2) {
         console.error("Reconnect also failed:", e2);
       }
