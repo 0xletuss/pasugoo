@@ -60,18 +60,32 @@ class RiderChatManager {
     console.log(`🔄 [RiderChat] Restoring request ${savedRequestId}...`);
 
     try {
-      // Verify the request is still active
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${PASUGO_API_BASE}/api/requests/${savedRequestId}`,
-        {
+      // Verify the request is still active — use authenticatedFetch to auto-refresh tokens
+      let res;
+      if (typeof authenticatedFetch === "function") {
+        res = await authenticatedFetch(
+          `${PASUGO_API_BASE}/api/requests/${savedRequestId}`,
+        );
+      } else {
+        const token = localStorage.getItem("access_token");
+        res = await fetch(`${PASUGO_API_BASE}/api/requests/${savedRequestId}`, {
           headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+        });
+      }
 
       if (!res.ok) {
-        console.log("📋 Request no longer exists, clearing state");
-        this.clearActiveRequest();
+        // Only clear on 404 (request truly gone) or 403 (not your request)
+        if (res.status === 404 || res.status === 403) {
+          console.log("📋 Request no longer accessible, clearing state");
+          this.clearActiveRequest();
+          return;
+        }
+        // On 401 or other errors, keep state and just try to reconnect anyway
+        console.warn(
+          `[RiderChat] Restore check got ${res.status}, keeping state and trying reconnect...`,
+        );
+        this.setCustomerInfo(savedCustomerName || "Customer");
+        await this.connect(parseInt(savedRequestId, 10));
         return;
       }
 
@@ -89,7 +103,18 @@ class RiderChatManager {
       this.setCustomerInfo(savedCustomerName || "Customer");
       await this.connect(parseInt(savedRequestId, 10));
     } catch (e) {
-      console.error("Failed to restore request:", e);
+      // Network error: don't clear state — keep trying
+      console.error(
+        "Failed to restore request (network error, keeping state):",
+        e,
+      );
+      // Try to reconnect anyway with saved info
+      try {
+        this.setCustomerInfo(savedCustomerName || "Customer");
+        await this.connect(parseInt(savedRequestId, 10));
+      } catch (e2) {
+        console.error("Reconnect also failed:", e2);
+      }
     }
   }
 

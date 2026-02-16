@@ -2086,12 +2086,40 @@ class RequestModalController {
   async checkAndRestoreRequest(state) {
     try {
       pasugoAPI.updateToken();
-      const result = await pasugoAPI.getRequestDetails(state.requestId);
 
-      if (!result.success) {
-        console.log("📋 Request no longer exists, clearing state");
-        this.clearRequestState();
-        return;
+      // Use authenticatedFetch if available (handles auto token refresh)
+      let result;
+      if (typeof authenticatedFetch === "function") {
+        try {
+          const res = await authenticatedFetch(
+            `${pasugoAPI.baseURL}/requests/${state.requestId}`,
+          );
+          const data = await res.json();
+          if (res.ok) {
+            result = { success: true, data: data.data };
+          } else if (res.status === 404 || res.status === 403) {
+            console.log("📋 Request no longer accessible, clearing state");
+            this.clearRequestState();
+            return;
+          } else {
+            // Auth or server error — don't clear state, just bail
+            console.warn(`[RestoreRequest] Got ${res.status}, keeping state`);
+            return;
+          }
+        } catch (fetchErr) {
+          // Network error — don't clear state
+          console.warn(
+            "[RestoreRequest] Network error, keeping state:",
+            fetchErr.message,
+          );
+          return;
+        }
+      } else {
+        result = await pasugoAPI.getRequestDetails(state.requestId);
+        if (!result.success) {
+          console.log("📋 Request check failed, keeping state");
+          return;
+        }
       }
 
       const request = result.data;
