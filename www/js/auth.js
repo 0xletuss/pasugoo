@@ -336,6 +336,13 @@ class RegistrationForm {
           errorMessage = "Vehicle plate number must be at least 3 characters";
         }
         break;
+
+      case "termsCheckbox":
+        if (!field.checked) {
+          isValid = false;
+          errorMessage = "You must agree to the Terms & Conditions";
+        }
+        break;
     }
 
     this.displayFieldError(field, isValid, errorMessage);
