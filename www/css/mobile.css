@@ -47,7 +47,7 @@ body {
 }
 
 /* ── PREVENT iOS INPUT ZOOM (font-size must be >= 16px) ── */
-input,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 textarea,
 select {
   font-size: 16px !important;
@@ -57,13 +57,38 @@ select {
 }
 
 /* Re-apply border-radius after reset */
-.form-group input,
+.form-group input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .form-group select {
   border-radius: 50px;
 }
 
 .form-group textarea {
   border-radius: 20px;
+}
+
+/* Custom select arrow (since appearance:none removes native arrow) */
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23333' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  padding-right: 45px;
+}
+
+/* Custom checkbox styling for mobile */
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  accent-color: #ffc107;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* File input styling */
+input[type="file"] {
+  font-size: 14px !important;
+  padding: 10px;
 }
 
 .form-input,
@@ -166,9 +191,17 @@ a,
   overscroll-behavior-y: contain;
 }
 
+/* Ensure mobile-container-view is a flex column so main-container fills remaining space */
+.mobile-container-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .top-header {
   padding: 16px 20px 30px;
   padding-top: max(16px, calc(env(safe-area-inset-top, 0px) + 12px));
+  flex-shrink: 0;
 }
 
 .header-content h1 {
@@ -183,10 +216,51 @@ a,
 .main-container {
   padding: 28px 20px;
   padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .nav-bar {
   margin-bottom: 20px;
+}
+
+/* ── REGISTER FORM RESPONSIVE ──────────────────────────── */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-group select,
+.form-group textarea {
+  padding: 14px 20px;
+}
+
+.form-group label {
+  margin-left: 10px;
+  font-size: 13px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.checkbox-group label {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.rider-fields {
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 14px;
+  font-size: 15px;
 }
 
 /* ── MAP DASHBOARD (customer) ──────────────────────────── */
@@ -704,5 +778,39 @@ a,
     width: 50px;
     height: 50px;
     font-size: 20px;
+  }
+
+  /* Form adjustments for very small screens */
+  .main-container {
+    padding: 20px 14px;
+  }
+
+  .form-group
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .form-group select,
+  .form-group textarea {
+    padding: 12px 16px;
+  }
+
+  .form-group select {
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .rider-fields {
+    padding: 12px;
+  }
+
+  .btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .checkbox-group label {
+    font-size: 11px !important;
   }
 }

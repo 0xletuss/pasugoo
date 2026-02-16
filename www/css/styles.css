@@ -116,6 +116,15 @@ body {
   transition: all 0.3s ease;
 }
 
+/* Select dropdown arrow */
+.form-group select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23333' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 22px center;
+  padding-right: 50px;
+  cursor: pointer;
+}
+
 .form-group textarea {
   border-radius: 20px; /* Less rounded for text areas */
 }
@@ -243,9 +252,24 @@ body {
 
 .checkbox-group {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin-left: 10px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  accent-color: var(--primary-yellow);
+  cursor: pointer;
+}
+
+.checkbox-group label {
+  flex: 1;
+  line-height: 1.5;
 }
 
 .alert {
