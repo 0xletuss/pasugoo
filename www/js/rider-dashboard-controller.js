@@ -20,6 +20,7 @@ class RiderDashboardController {
       this._setupOnlineToggle();
       this._setupNavigation();
       this._setupRequestsModal();
+      this._setupProfile();
       this._startNotificationPolling();
     });
   }
@@ -541,28 +542,369 @@ class RiderDashboardController {
   }
 
   // ═══════ PROFILE ═══════
-  _loadProfile() {
+  _setupProfile() {
+    // Avatar tap → file input
+    this._bindClick("rProfAvatarWrap", () => {
+      const inp = document.getElementById("rProfPhotoInput");
+      if (inp) inp.click();
+    });
+    const photoInput = document.getElementById("rProfPhotoInput");
+    if (photoInput) {
+      photoInput.addEventListener("change", (e) => this._uploadProfilePhoto(e));
+    }
+
+    // Inline edit buttons
+    document
+      .querySelectorAll("#riderProfilePanel .prof-field-edit")
+      .forEach((btn) => {
+        btn.addEventListener("click", () =>
+          this._toggleFieldEdit(btn.dataset.field),
+        );
+      });
+
+    // Save changes
+    this._bindClick("rProfSaveBtn", () => this._saveProfileChanges());
+
+    // Change password modal
+    this._bindClick("rProfChangePassword", () =>
+      this._showModal("riderPasswordOverlay"),
+    );
+    this._bindClick("rClosePasswordModal", () =>
+      this._hideModal("riderPasswordOverlay"),
+    );
+    this._bindClick("rSubmitPasswordBtn", () => this._submitPasswordChange());
+
+    // Preferences modal
+    this._bindClick("rProfPreferences", () => {
+      this._loadPreferences();
+      this._showModal("riderPrefsOverlay");
+    });
+    this._bindClick("rClosePrefsModal", () =>
+      this._hideModal("riderPrefsOverlay"),
+    );
+    this._bindClick("rSavePrefsBtn", () => this._savePreferences());
+
+    // Close modals on overlay click
+    ["riderPasswordOverlay", "riderPrefsOverlay"].forEach((id) => {
+      const overlay = document.getElementById(id);
+      if (overlay) {
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) this._hideModal(id);
+        });
+      }
+    });
+  }
+
+  async _loadProfile() {
+    // Load from localStorage first (fast)
     const userData = localStorage.getItem("user_data");
-    if (!userData) return;
-    const user = JSON.parse(userData);
-    this._setText("riderProfileName", user.full_name || "Rider");
-    this._setText("riderProfileEmail", user.email || "");
-    this._setText("riderProfilePhone", user.phone_number || "");
+    if (userData) {
+      const user = JSON.parse(userData);
+      this._populateProfile(user);
+    }
+
+    // Then fetch fresh data from API
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/users/me`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const freshUser = await res.json();
+        localStorage.setItem("user_data", JSON.stringify(freshUser));
+        this._populateProfile(freshUser);
+      }
+    } catch (e) {
+      /* use cached data */
+    }
 
     // Load rider-specific data
-    fetch(`${RIDER_API_BASE}/api/riders/profile`, {
-      headers: this._getHeaders(),
-    })
-      .then((r) => r.json())
-      .then((data) => {
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/riders/profile`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
         const rider = data.data || data;
         this._setText(
-          "riderProfileRating",
+          "rProfStatRating",
           rider.rating ? parseFloat(rider.rating).toFixed(1) : "0.0",
         );
-        this._setText("riderProfileTasks", rider.total_tasks_completed || 0);
-      })
-      .catch(() => {});
+        this._setText("rProfStatDeliveries", rider.total_tasks_completed || 0);
+        this._setText(
+          "rProfStatEarnings",
+          `₱${parseFloat(rider.total_earnings || 0).toFixed(0)}`,
+        );
+
+        // Vehicle info
+        this._setText("rProfValVehicle", rider.vehicle_type || "—");
+        this._setText("rProfValPlate", rider.vehicle_plate || "—");
+        this._setText("rProfValLicense", rider.license_number || "—");
+      }
+    } catch (e) {
+      /* silent */
+    }
+  }
+
+  _populateProfile(user) {
+    this._setText("rProfHeroName", user.full_name || "Rider");
+    this._setText("rProfHeroEmail", user.email || "");
+
+    if (user.created_at) {
+      const d = new Date(user.created_at);
+      const mn = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      this._setText(
+        "rProfHeroSince",
+        `Rider since ${mn[d.getMonth()]} ${d.getFullYear()}`,
+      );
+    }
+
+    // Avatar
+    const img = document.getElementById("rProfAvatarImg");
+    const placeholder = document.getElementById("rProfAvatarPlaceholder");
+    if (user.profile_photo_url) {
+      if (img) {
+        img.src = user.profile_photo_url;
+        img.style.display = "";
+      }
+      if (placeholder) placeholder.style.display = "none";
+    } else {
+      if (img) img.style.display = "none";
+      if (placeholder) placeholder.style.display = "";
+    }
+
+    // Editable fields
+    this._setText("rProfValName", user.full_name || "—");
+    this._setText("rProfValPhone", user.phone_number || "—");
+    this._setText("rProfValEmail", user.email || "—");
+  }
+
+  // ── Photo Upload ──
+  async _uploadProfilePhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = localStorage.getItem("access_token");
+
+    try {
+      this._profToast("Uploading photo...");
+      const res = await fetch(`${RIDER_API_BASE}/api/uploads/profile-photo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.data?.url) {
+        const img = document.getElementById("rProfAvatarImg");
+        const placeholder = document.getElementById("rProfAvatarPlaceholder");
+        if (img) {
+          img.src = data.data.url;
+          img.style.display = "";
+        }
+        if (placeholder) placeholder.style.display = "none";
+        const ud = JSON.parse(localStorage.getItem("user_data") || "{}");
+        ud.profile_photo_url = data.data.url;
+        localStorage.setItem("user_data", JSON.stringify(ud));
+        this._profToast("Photo updated!");
+      } else {
+        this._profToast("Upload failed");
+      }
+    } catch (err) {
+      this._profToast("Upload error");
+    }
+  }
+
+  // ── Inline Field Editing ──
+  _toggleFieldEdit(field) {
+    const fieldMap = {
+      name: { val: "rProfValName", inp: "rProfInputName" },
+      phone: { val: "rProfValPhone", inp: "rProfInputPhone" },
+    };
+    const f = fieldMap[field];
+    if (!f) return;
+
+    const valEl = document.getElementById(f.val);
+    const inpEl = document.getElementById(f.inp);
+    if (!valEl || !inpEl) return;
+
+    if (inpEl.style.display === "none") {
+      inpEl.value = valEl.textContent === "—" ? "" : valEl.textContent;
+      inpEl.style.display = "";
+      valEl.style.display = "none";
+      inpEl.focus();
+      const saveBtn = document.getElementById("rProfSaveBtn");
+      if (saveBtn) saveBtn.style.display = "";
+    } else {
+      inpEl.style.display = "none";
+      valEl.style.display = "";
+    }
+  }
+
+  async _saveProfileChanges() {
+    const nameInp = document.getElementById("rProfInputName");
+    const phoneInp = document.getElementById("rProfInputPhone");
+
+    const body = {};
+    if (nameInp && nameInp.style.display !== "none" && nameInp.value.trim()) {
+      body.full_name = nameInp.value.trim();
+    }
+    if (
+      phoneInp &&
+      phoneInp.style.display !== "none" &&
+      phoneInp.value.trim()
+    ) {
+      body.phone_number = phoneInp.value.trim();
+    }
+
+    if (Object.keys(body).length === 0) {
+      this._profToast("No changes to save");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/users/me`, {
+        method: "PUT",
+        headers: this._getHeaders(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const ud = JSON.parse(localStorage.getItem("user_data") || "{}");
+        Object.assign(ud, body);
+        localStorage.setItem("user_data", JSON.stringify(ud));
+
+        if (body.full_name) {
+          this._setText("rProfValName", body.full_name);
+          this._setText("rProfHeroName", body.full_name);
+        }
+        if (body.phone_number)
+          this._setText("rProfValPhone", body.phone_number);
+
+        ["rProfInputName", "rProfInputPhone"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+        ["rProfValName", "rProfValPhone"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "";
+        });
+        const saveBtn = document.getElementById("rProfSaveBtn");
+        if (saveBtn) saveBtn.style.display = "none";
+
+        this._profToast("Profile updated!");
+      } else {
+        this._profToast(data.detail || "Update failed");
+      }
+    } catch (e) {
+      this._profToast("Error saving changes");
+    }
+  }
+
+  // ── Change Password ──
+  async _submitPasswordChange() {
+    const current = document.getElementById("rCurrentPasswordInput").value;
+    const newPass = document.getElementById("rNewPasswordInput").value;
+    const confirmPass = document.getElementById("rConfirmPasswordInput").value;
+
+    if (!current || !newPass || !confirmPass) {
+      this._profToast("Fill all fields");
+      return;
+    }
+    if (newPass !== confirmPass) {
+      this._profToast("Passwords don't match");
+      return;
+    }
+    if (newPass.length < 6) {
+      this._profToast("Password must be 6+ characters");
+      return;
+    }
+
+    const btn = document.getElementById("rSubmitPasswordBtn");
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/auth/change-password`, {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ old_password: current, new_password: newPass }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        this._hideModal("riderPasswordOverlay");
+        document.getElementById("rCurrentPasswordInput").value = "";
+        document.getElementById("rNewPasswordInput").value = "";
+        document.getElementById("rConfirmPasswordInput").value = "";
+        this._profToast("Password changed!");
+      } else {
+        this._profToast(data.detail || "Failed to change password");
+      }
+    } catch (e) {
+      this._profToast("Error changing password");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Preferences ──
+  _loadPreferences() {
+    const prefs = JSON.parse(localStorage.getItem("rider_prefs") || "{}");
+    const notif = document.getElementById("rPrefNotifications");
+    const sounds = document.getElementById("rPrefSounds");
+    const autoAccept = document.getElementById("rPrefAutoAccept");
+    if (notif) notif.checked = prefs.notifications !== false;
+    if (sounds) sounds.checked = prefs.sounds !== false;
+    if (autoAccept) autoAccept.checked = !!prefs.autoAccept;
+  }
+
+  _savePreferences() {
+    const prefs = {
+      notifications:
+        document.getElementById("rPrefNotifications")?.checked !== false,
+      sounds: document.getElementById("rPrefSounds")?.checked !== false,
+      autoAccept: document.getElementById("rPrefAutoAccept")?.checked || false,
+    };
+    localStorage.setItem("rider_prefs", JSON.stringify(prefs));
+    this._hideModal("riderPrefsOverlay");
+    this._profToast("Preferences saved!");
+  }
+
+  // ── Modal Helpers ──
+  _showModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("show");
+  }
+
+  _hideModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("show");
+  }
+
+  _profToast(msg) {
+    let t = document.getElementById("rProfToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "rProfToast";
+      t.className = "prof-toast";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
   }
 
   // ═══════ LOGOUT ═══════

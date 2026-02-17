@@ -968,64 +968,296 @@
         <h1>My Profile</h1>
       </div>
       <div class="app-body">
-        <div class="profile-section">
-          <div class="profile-card">
-            <div class="profile-avatar">
+        <!-- Profile Hero -->
+        <div class="prof-hero">
+          <div class="prof-avatar-wrap" id="rProfAvatarWrap">
+            <img
+              class="prof-avatar-img"
+              id="rProfAvatarImg"
+              src=""
+              alt=""
+              style="display: none"
+            />
+            <div class="prof-avatar-placeholder" id="rProfAvatarPlaceholder">
               <i class="fa-solid fa-motorcycle"></i>
             </div>
-            <div class="profile-name" id="riderProfileName">Loading...</div>
-            <div class="profile-email" id="riderProfileEmail"></div>
-            <div class="profile-phone" id="riderProfilePhone"></div>
-            <div
-              style="
-                margin-top: 12px;
-                display: flex;
-                justify-content: center;
-                gap: 20px;
-              "
-            >
-              <div style="text-align: center">
-                <div
-                  style="font-size: 20px; font-weight: 700; color: #ffc107"
-                  id="riderProfileRating"
-                >
-                  0.0
-                </div>
-                <div style="font-size: 11px; color: #999">Rating</div>
-              </div>
-              <div style="text-align: center">
-                <div
-                  style="font-size: 20px; font-weight: 700"
-                  id="riderProfileTasks"
-                >
-                  0
-                </div>
-                <div style="font-size: 11px; color: #999">Deliveries</div>
-              </div>
+            <div class="prof-avatar-badge">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <input
+              type="file"
+              id="rProfPhotoInput"
+              accept="image/*"
+              style="display: none"
+            />
+          </div>
+          <div class="prof-hero-name" id="rProfHeroName">Loading...</div>
+          <div class="prof-hero-email" id="rProfHeroEmail"></div>
+          <div class="prof-hero-since" id="rProfHeroSince"></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="prof-stats-row">
+          <div class="prof-stat-box">
+            <div class="prof-stat-val prof-stat-yellow" id="rProfStatRating">
+              0.0
+            </div>
+            <div class="prof-stat-label">
+              <i
+                class="fa-solid fa-star"
+                style="color: #ffc107; font-size: 10px"
+              ></i>
+              Rating
             </div>
           </div>
-          <div class="profile-menu">
-            <div class="profile-menu-item" id="riderMenuStats">
+          <div class="prof-stat-divider"></div>
+          <div class="prof-stat-box">
+            <div class="prof-stat-val" id="rProfStatDeliveries">0</div>
+            <div class="prof-stat-label">Deliveries</div>
+          </div>
+          <div class="prof-stat-divider"></div>
+          <div class="prof-stat-box">
+            <div class="prof-stat-val" id="rProfStatEarnings">₱0</div>
+            <div class="prof-stat-label">Earnings</div>
+          </div>
+        </div>
+
+        <!-- Personal Info (editable) -->
+        <div class="prof-section">
+          <div class="prof-section-title">Personal Information</div>
+
+          <div class="prof-field" id="rProfFieldName">
+            <div class="prof-field-icon"><i class="fa-solid fa-user"></i></div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Full Name</div>
+              <div class="prof-field-value" id="rProfValName">—</div>
+              <input
+                class="prof-field-input"
+                id="rProfInputName"
+                type="text"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="name">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="rProfFieldPhone">
+            <div class="prof-field-icon"><i class="fa-solid fa-phone"></i></div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Phone</div>
+              <div class="prof-field-value" id="rProfValPhone">—</div>
+              <input
+                class="prof-field-input"
+                id="rProfInputPhone"
+                type="tel"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="phone">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="rProfFieldEmail">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-envelope"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Email</div>
+              <div class="prof-field-value" id="rProfValEmail">—</div>
+            </div>
+            <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
+          </div>
+
+          <button class="prof-save-btn" id="rProfSaveBtn" style="display: none">
+            <i class="fa-solid fa-check"></i> Save Changes
+          </button>
+        </div>
+
+        <!-- Vehicle Info -->
+        <div class="prof-section">
+          <div class="prof-section-title">Vehicle Information</div>
+
+          <div class="prof-field">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-motorcycle"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Vehicle Type</div>
+              <div class="prof-field-value" id="rProfValVehicle">—</div>
+            </div>
+            <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
+          </div>
+
+          <div class="prof-field">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-rectangle-list"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Plate Number</div>
+              <div class="prof-field-value" id="rProfValPlate">—</div>
+            </div>
+            <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
+          </div>
+
+          <div class="prof-field">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-id-card"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">License Number</div>
+              <div class="prof-field-value" id="rProfValLicense">—</div>
+            </div>
+            <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
+          </div>
+        </div>
+
+        <!-- Account & Security -->
+        <div class="prof-section">
+          <div class="prof-section-title">Account & Security</div>
+          <div class="prof-menu-item" id="rProfChangePassword">
+            <div class="prof-menu-icon"><i class="fa-solid fa-lock"></i></div>
+            <span>Change Password</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+          <div class="prof-menu-item" id="rProfPreferences">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <span>Preferences</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="prof-section">
+          <div class="prof-section-title">Quick Links</div>
+          <div class="prof-menu-item" id="riderMenuStats">
+            <div class="prof-menu-icon">
               <i class="fa-solid fa-chart-line"></i>
-              <span>My Stats & Ratings</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
             </div>
-            <div class="profile-menu-item" id="riderMenuChat">
-              <i class="fa-solid fa-comments"></i>
-              <span>Chat History</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
-            <div class="profile-menu-item" id="riderMenuNotifs">
-              <i class="fa-solid fa-bell"></i>
-              <span>Notifications</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
-            <div class="profile-menu-item danger" id="riderMenuLogout">
-              <i class="fa-solid fa-right-from-bracket"></i>
-              <span>Logout</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
+            <span>My Stats & Ratings</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
           </div>
+          <div class="prof-menu-item" id="riderMenuChat">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-comments"></i>
+            </div>
+            <span>Chat History</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+          <div class="prof-menu-item" id="riderMenuNotifs">
+            <div class="prof-menu-icon"><i class="fa-solid fa-bell"></i></div>
+            <span>Notifications</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div class="prof-section">
+          <div class="prof-menu-item danger" id="riderMenuLogout">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <span>Logout</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <div style="height: 30px"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIDER CHANGE PASSWORD MODAL ═══════ -->
+    <div class="prof-modal-overlay" id="riderPasswordOverlay">
+      <div class="prof-modal">
+        <div class="prof-modal-header">
+          <h3>Change Password</h3>
+          <button class="prof-modal-close" id="rClosePasswordModal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="prof-modal-body">
+          <div class="prof-input-group">
+            <label>Current Password</label>
+            <input
+              type="password"
+              id="rCurrentPasswordInput"
+              placeholder="Enter current password"
+            />
+          </div>
+          <div class="prof-input-group">
+            <label>New Password</label>
+            <input
+              type="password"
+              id="rNewPasswordInput"
+              placeholder="Enter new password"
+            />
+          </div>
+          <div class="prof-input-group">
+            <label>Confirm New Password</label>
+            <input
+              type="password"
+              id="rConfirmPasswordInput"
+              placeholder="Confirm new password"
+            />
+          </div>
+          <button class="prof-modal-submit" id="rSubmitPasswordBtn">
+            <i class="fa-solid fa-check"></i> Update Password
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIDER PREFERENCES MODAL ═══════ -->
+    <div class="prof-modal-overlay" id="riderPrefsOverlay">
+      <div class="prof-modal">
+        <div class="prof-modal-header">
+          <h3>Preferences</h3>
+          <button class="prof-modal-close" id="rClosePrefsModal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="prof-modal-body">
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Push Notifications</div>
+              <div class="prof-pref-desc">Receive new request alerts</div>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="rPrefNotifications" checked />
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Sound Alerts</div>
+              <div class="prof-pref-desc">
+                Play sounds for new requests & messages
+              </div>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="rPrefSounds" checked />
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Auto-Accept Requests</div>
+              <div class="prof-pref-desc">
+                Automatically accept nearby requests
+              </div>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="rPrefAutoAccept" />
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <button class="prof-modal-submit" id="rSavePrefsBtn">
+            <i class="fa-solid fa-check"></i> Save Preferences
+          </button>
         </div>
       </div>
     </div>

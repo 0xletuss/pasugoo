@@ -22,6 +22,7 @@ class DashboardController {
       this._setupNavigation();
       this._setupPanels();
       this._setupRating();
+      this._setupProfile();
       this._loadProfile();
       this._startNotificationPolling();
       this._setupFAB();
@@ -159,13 +160,619 @@ class DashboardController {
   }
 
   // ═══════ PROFILE ═══════
-  _loadProfile() {
+  _setupProfile() {
+    // Avatar tap → file input
+    this._bindClick("profAvatarWrap", () => {
+      const inp = document.getElementById("profPhotoInput");
+      if (inp) inp.click();
+    });
+    const photoInput = document.getElementById("profPhotoInput");
+    if (photoInput) {
+      photoInput.addEventListener("change", (e) => this._uploadProfilePhoto(e));
+    }
+
+    // Inline edit buttons
+    document.querySelectorAll(".prof-field-edit").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        this._toggleFieldEdit(btn.dataset.field),
+      );
+    });
+
+    // Save changes
+    this._bindClick("profSaveBtn", () => this._saveProfileChanges());
+
+    // Change password modal
+    this._bindClick("profChangePassword", () =>
+      this._showModal("changePasswordOverlay"),
+    );
+    this._bindClick("closePasswordModal", () =>
+      this._hideModal("changePasswordOverlay"),
+    );
+    this._bindClick("submitPasswordBtn", () => this._submitPasswordChange());
+
+    // Preferences modal
+    this._bindClick("profPreferences", () => {
+      this._loadPreferences();
+      this._showModal("preferencesOverlay");
+    });
+    this._bindClick("closePrefsModal", () =>
+      this._hideModal("preferencesOverlay"),
+    );
+    this._bindClick("savePrefsBtn", () => this._savePreferences());
+
+    // Address modal
+    this._bindClick("profAddAddress", () => {
+      this._resetAddressModal();
+      this._showModal("addAddressOverlay");
+    });
+    this._bindClick("closeAddressModal", () =>
+      this._hideModal("addAddressOverlay"),
+    );
+    this._bindClick("saveAddressBtn", () => this._saveAddress());
+
+    // Address label chips
+    document
+      .querySelectorAll("#addAddressOverlay .prof-chip")
+      .forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document
+            .querySelectorAll("#addAddressOverlay .prof-chip")
+            .forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          const customInput = document.getElementById("addressLabelInput");
+          if (chip.dataset.label === "Other") {
+            if (customInput) customInput.style.display = "";
+          } else {
+            if (customInput) {
+              customInput.style.display = "none";
+              customInput.value = "";
+            }
+          }
+        });
+      });
+
+    // Close modals on overlay click
+    [
+      "changePasswordOverlay",
+      "preferencesOverlay",
+      "addAddressOverlay",
+    ].forEach((id) => {
+      const overlay = document.getElementById(id);
+      if (overlay) {
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) this._hideModal(id);
+        });
+      }
+    });
+  }
+
+  async _loadProfile() {
+    // Load from localStorage first (fast)
     const userData = localStorage.getItem("user_data");
-    if (!userData) return;
-    const user = JSON.parse(userData);
-    this._setText("profileName", user.full_name || "Customer");
-    this._setText("profileEmail", user.email || "");
-    this._setText("profilePhone", user.phone_number || "");
+    if (userData) {
+      const user = JSON.parse(userData);
+      this._populateProfile(user);
+    }
+
+    // Then fetch fresh data from API
+    try {
+      const res = await fetch(`${API_BASE}/api/users/me`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const freshUser = await res.json();
+        localStorage.setItem("user_data", JSON.stringify(freshUser));
+        this._populateProfile(freshUser);
+      }
+    } catch (e) {
+      /* use cached data */
+    }
+
+    // Load addresses
+    this._loadAddresses();
+
+    // Load quick stats
+    this._loadProfileStats();
+  }
+
+  _populateProfile(user) {
+    // Hero section
+    this._setText("profHeroName", user.full_name || "Customer");
+    this._setText("profHeroEmail", user.email || "");
+
+    // Member since
+    if (user.created_at) {
+      const d = new Date(user.created_at);
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      this._setText(
+        "profHeroSince",
+        `Member since ${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+      );
+    }
+
+    // Avatar
+    const img = document.getElementById("profAvatarImg");
+    const placeholder = document.getElementById("profAvatarPlaceholder");
+    if (user.profile_photo_url) {
+      if (img) {
+        img.src = user.profile_photo_url;
+        img.style.display = "";
+      }
+      if (placeholder) placeholder.style.display = "none";
+    } else {
+      if (img) img.style.display = "none";
+      if (placeholder) placeholder.style.display = "";
+    }
+
+    // Editable fields
+    this._setText("profValName", user.full_name || "—");
+    this._setText("profValPhone", user.phone_number || "—");
+    this._setText("profValAddress", user.address || "—");
+    this._setText("profValEmail", user.email || "—");
+  }
+
+  async _loadProfileStats() {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/requests/my-requests?page_size=999`,
+        { headers: this._getHeaders() },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const orders = data.data || [];
+        const completed = orders.filter(
+          (o) => o.status === "completed" || o.status === "delivered",
+        );
+        const totalSpent = completed.reduce(
+          (sum, o) => sum + parseFloat(o.total_amount || 0),
+          0,
+        );
+
+        this._setText("profStatOrders", completed.length);
+        this._setText("profStatSpent", `₱${totalSpent.toFixed(0)}`);
+      }
+    } catch (e) {
+      /* silent */
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/ratings/my-given-ratings`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        this._setText("profStatRated", data.data?.total_ratings || 0);
+      }
+    } catch (e) {
+      this._setText("profStatRated", "—");
+    }
+  }
+
+  // ── Photo Upload ──
+  async _uploadProfilePhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const token = localStorage.getItem("access_token");
+    try {
+      this._profToast("Uploading photo...");
+      const res = await fetch(`${API_BASE}/api/uploads/profile-photo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.data?.url) {
+        const img = document.getElementById("profAvatarImg");
+        const placeholder = document.getElementById("profAvatarPlaceholder");
+        if (img) {
+          img.src = data.data.url;
+          img.style.display = "";
+        }
+        if (placeholder) placeholder.style.display = "none";
+        // Update localStorage
+        const ud = JSON.parse(localStorage.getItem("user_data") || "{}");
+        ud.profile_photo_url = data.data.url;
+        localStorage.setItem("user_data", JSON.stringify(ud));
+        this._profToast("Photo updated!");
+      } else {
+        this._profToast("Upload failed");
+      }
+    } catch (err) {
+      this._profToast("Upload error");
+    }
+  }
+
+  // ── Inline Field Editing ──
+  _toggleFieldEdit(field) {
+    const fieldMap = {
+      name: { val: "profValName", inp: "profInputName" },
+      phone: { val: "profValPhone", inp: "profInputPhone" },
+      address: { val: "profValAddress", inp: "profInputAddress" },
+    };
+    const f = fieldMap[field];
+    if (!f) return;
+
+    const valEl = document.getElementById(f.val);
+    const inpEl = document.getElementById(f.inp);
+    if (!valEl || !inpEl) return;
+
+    if (inpEl.style.display === "none") {
+      // Show input, hide value
+      inpEl.value = valEl.textContent === "—" ? "" : valEl.textContent;
+      inpEl.style.display = "";
+      valEl.style.display = "none";
+      inpEl.focus();
+      // Show save button
+      const saveBtn = document.getElementById("profSaveBtn");
+      if (saveBtn) saveBtn.style.display = "";
+    } else {
+      // Hide input, show value
+      inpEl.style.display = "none";
+      valEl.style.display = "";
+    }
+
+    // Hide save button if no inputs visible
+    this._checkSaveBtnVisibility();
+  }
+
+  _checkSaveBtnVisibility() {
+    const anyEditing =
+      document.querySelector('.prof-field-input[style=""]') ||
+      document.querySelector('.prof-field-input:not([style*="none"])');
+    const saveBtn = document.getElementById("profSaveBtn");
+    // Always keep it visible if any field is being edited
+    // (will be re-hidden after save)
+  }
+
+  async _saveProfileChanges() {
+    const nameInp = document.getElementById("profInputName");
+    const phoneInp = document.getElementById("profInputPhone");
+    const addrInp = document.getElementById("profInputAddress");
+
+    const body = {};
+    if (nameInp && nameInp.style.display !== "none" && nameInp.value.trim()) {
+      body.full_name = nameInp.value.trim();
+    }
+    if (
+      phoneInp &&
+      phoneInp.style.display !== "none" &&
+      phoneInp.value.trim()
+    ) {
+      body.phone_number = phoneInp.value.trim();
+    }
+    if (addrInp && addrInp.style.display !== "none" && addrInp.value.trim()) {
+      body.address = addrInp.value.trim();
+    }
+
+    if (Object.keys(body).length === 0) {
+      this._profToast("No changes to save");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/users/me`, {
+        method: "PUT",
+        headers: this._getHeaders(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Update localStorage
+        const ud = JSON.parse(localStorage.getItem("user_data") || "{}");
+        Object.assign(ud, body);
+        localStorage.setItem("user_data", JSON.stringify(ud));
+
+        // Update display values & hide inputs
+        if (body.full_name) {
+          this._setText("profValName", body.full_name);
+          this._setText("profHeroName", body.full_name);
+        }
+        if (body.phone_number) this._setText("profValPhone", body.phone_number);
+        if (body.address) this._setText("profValAddress", body.address);
+
+        // Hide all inputs
+        ["profInputName", "profInputPhone", "profInputAddress"].forEach(
+          (id) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+          },
+        );
+        ["profValName", "profValPhone", "profValAddress"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "";
+        });
+        const saveBtn = document.getElementById("profSaveBtn");
+        if (saveBtn) saveBtn.style.display = "none";
+
+        this._profToast("Profile updated!");
+      } else {
+        this._profToast(data.detail || "Update failed");
+      }
+    } catch (e) {
+      this._profToast("Error saving changes");
+    }
+  }
+
+  // ── Addresses ──
+  async _loadAddresses() {
+    const container = document.getElementById("profAddressList");
+    if (!container) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/addresses/`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const addrs = data.data || [];
+        if (addrs.length === 0) {
+          container.innerHTML =
+            '<div class="prof-empty-mini">No saved addresses yet</div>';
+          return;
+        }
+        container.innerHTML = addrs
+          .map((a) => {
+            const iconMap = { Home: "fa-house", Work: "fa-briefcase" };
+            const icon = iconMap[a.label] || "fa-location-dot";
+            return `
+            <div class="prof-address-card" data-id="${a.address_id}">
+              <div class="prof-address-icon"><i class="fa-solid ${icon}"></i></div>
+              <div class="prof-address-body">
+                <div class="prof-address-label">${this._escHtml(a.label)}</div>
+                <div class="prof-address-text">${this._escHtml(a.address_text)}</div>
+                ${a.is_default ? '<div class="prof-address-default">Default</div>' : ""}
+              </div>
+              <div class="prof-address-actions">
+                <button onclick="window.dashCtrl._editAddress(${a.address_id})"><i class="fa-solid fa-pen"></i></button>
+                <button class="danger" onclick="window.dashCtrl._deleteAddress(${a.address_id})"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+    } catch (e) {
+      container.innerHTML =
+        '<div class="prof-empty-mini">Failed to load addresses</div>';
+    }
+  }
+
+  _resetAddressModal() {
+    document.getElementById("addressModalTitle").textContent = "Add Address";
+    document.getElementById("addressTextInput").value = "";
+    document.getElementById("editAddressId").value = "";
+    document.getElementById("addressDefaultCheck").checked = false;
+    const customLabel = document.getElementById("addressLabelInput");
+    if (customLabel) {
+      customLabel.value = "";
+      customLabel.style.display = "none";
+    }
+    document
+      .querySelectorAll("#addAddressOverlay .prof-chip")
+      .forEach((c, i) => {
+        c.classList.toggle("active", i === 0);
+      });
+  }
+
+  async _editAddress(id) {
+    try {
+      const res = await fetch(`${API_BASE}/api/addresses/`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const addr = (data.data || []).find((a) => a.address_id === id);
+        if (addr) {
+          document.getElementById("addressModalTitle").textContent =
+            "Edit Address";
+          document.getElementById("addressTextInput").value =
+            addr.address_text || "";
+          document.getElementById("editAddressId").value = addr.address_id;
+          document.getElementById("addressDefaultCheck").checked =
+            !!addr.is_default;
+
+          // Set chip
+          const chips = document.querySelectorAll(
+            "#addAddressOverlay .prof-chip",
+          );
+          let found = false;
+          chips.forEach((c) => {
+            const match = c.dataset.label === addr.label;
+            c.classList.toggle("active", match);
+            if (match) found = true;
+          });
+          if (!found) {
+            chips.forEach((c) =>
+              c.classList.toggle("active", c.dataset.label === "Other"),
+            );
+            const customLabel = document.getElementById("addressLabelInput");
+            if (customLabel) {
+              customLabel.style.display = "";
+              customLabel.value = addr.label;
+            }
+          }
+
+          this._showModal("addAddressOverlay");
+        }
+      }
+    } catch (e) {
+      this._profToast("Error loading address");
+    }
+  }
+
+  async _saveAddress() {
+    const activeChip = document.querySelector(
+      "#addAddressOverlay .prof-chip.active",
+    );
+    let label = activeChip ? activeChip.dataset.label : "Home";
+    if (label === "Other") {
+      const custom = document.getElementById("addressLabelInput");
+      label = custom && custom.value.trim() ? custom.value.trim() : "Other";
+    }
+    const addressText = document
+      .getElementById("addressTextInput")
+      .value.trim();
+    const isDefault = document.getElementById("addressDefaultCheck").checked;
+    const editId = document.getElementById("editAddressId").value;
+
+    if (!addressText) {
+      this._profToast("Please enter an address");
+      return;
+    }
+
+    const body = { label, address_text: addressText, is_default: isDefault };
+
+    try {
+      let res;
+      if (editId) {
+        res = await fetch(`${API_BASE}/api/addresses/${editId}`, {
+          method: "PUT",
+          headers: this._getHeaders(),
+          body: JSON.stringify(body),
+        });
+      } else {
+        res = await fetch(`${API_BASE}/api/addresses/`, {
+          method: "POST",
+          headers: this._getHeaders(),
+          body: JSON.stringify(body),
+        });
+      }
+      const data = await res.json();
+      if (data.success || res.ok) {
+        this._hideModal("addAddressOverlay");
+        this._loadAddresses();
+        this._profToast(editId ? "Address updated!" : "Address added!");
+      } else {
+        this._profToast(data.detail || "Failed to save");
+      }
+    } catch (e) {
+      this._profToast("Error saving address");
+    }
+  }
+
+  async _deleteAddress(id) {
+    if (!confirm("Delete this address?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/addresses/${id}`, {
+        method: "DELETE",
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        this._loadAddresses();
+        this._profToast("Address deleted");
+      }
+    } catch (e) {
+      this._profToast("Error deleting");
+    }
+  }
+
+  // ── Change Password ──
+  async _submitPasswordChange() {
+    const current = document.getElementById("currentPasswordInput").value;
+    const newPass = document.getElementById("newPasswordInput").value;
+    const confirm = document.getElementById("confirmPasswordInput").value;
+
+    if (!current || !newPass || !confirm) {
+      this._profToast("Fill all fields");
+      return;
+    }
+    if (newPass !== confirm) {
+      this._profToast("Passwords don't match");
+      return;
+    }
+    if (newPass.length < 6) {
+      this._profToast("Password must be 6+ characters");
+      return;
+    }
+
+    const btn = document.getElementById("submitPasswordBtn");
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/change-password`, {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ old_password: current, new_password: newPass }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        this._hideModal("changePasswordOverlay");
+        document.getElementById("currentPasswordInput").value = "";
+        document.getElementById("newPasswordInput").value = "";
+        document.getElementById("confirmPasswordInput").value = "";
+        this._profToast("Password changed!");
+      } else {
+        this._profToast(data.detail || "Failed to change password");
+      }
+    } catch (e) {
+      this._profToast("Error changing password");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // ── Preferences ──
+  _loadPreferences() {
+    const prefs = JSON.parse(localStorage.getItem("user_prefs") || "{}");
+    const notif = document.getElementById("prefNotifications");
+    const sounds = document.getElementById("prefSounds");
+    const payment = document.getElementById("prefPayment");
+    if (notif) notif.checked = prefs.notifications !== false;
+    if (sounds) sounds.checked = prefs.sounds !== false;
+    if (payment) payment.value = prefs.payment || "cod";
+  }
+
+  _savePreferences() {
+    const prefs = {
+      notifications:
+        document.getElementById("prefNotifications")?.checked !== false,
+      sounds: document.getElementById("prefSounds")?.checked !== false,
+      payment: document.getElementById("prefPayment")?.value || "cod",
+    };
+    localStorage.setItem("user_prefs", JSON.stringify(prefs));
+    this._hideModal("preferencesOverlay");
+    this._profToast("Preferences saved!");
+  }
+
+  // ── Modal Helpers ──
+  _showModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("show");
+  }
+
+  _hideModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("show");
+  }
+
+  _profToast(msg) {
+    let t = document.getElementById("profToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "profToast";
+      t.className = "prof-toast";
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
   }
 
   // ═══════ NOTIFICATIONS ═══════
@@ -721,6 +1328,7 @@ class DashboardController {
 
 // Expose globally
 window.dashboardController = new DashboardController();
+window.dashCtrl = window.dashboardController;
 
 // Also trigger rating modal after delivery completion
 // (Called from request-modal.js when delivery completes)

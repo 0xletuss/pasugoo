@@ -315,35 +315,335 @@
         <h1>My Profile</h1>
       </div>
       <div class="app-body">
-        <div class="profile-section">
-          <div class="profile-card">
-            <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
-            <div class="profile-name" id="profileName">Loading...</div>
-            <div class="profile-email" id="profileEmail"></div>
-            <div class="profile-phone" id="profilePhone"></div>
+        <!-- Profile Hero -->
+        <div class="prof-hero">
+          <div class="prof-avatar-wrap" id="profAvatarWrap">
+            <img
+              class="prof-avatar-img"
+              id="profAvatarImg"
+              src=""
+              alt=""
+              style="display: none"
+            />
+            <div class="prof-avatar-placeholder" id="profAvatarPlaceholder">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="prof-avatar-badge">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <input
+              type="file"
+              id="profPhotoInput"
+              accept="image/*"
+              style="display: none"
+            />
           </div>
-          <div class="profile-menu">
-            <div class="profile-menu-item" id="menuChatHistory">
+          <div class="prof-hero-name" id="profHeroName">Loading...</div>
+          <div class="prof-hero-email" id="profHeroEmail"></div>
+          <div class="prof-hero-since" id="profHeroSince"></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="prof-stats-row">
+          <div class="prof-stat-box">
+            <div class="prof-stat-val" id="profStatOrders">0</div>
+            <div class="prof-stat-label">Orders</div>
+          </div>
+          <div class="prof-stat-divider"></div>
+          <div class="prof-stat-box">
+            <div class="prof-stat-val" id="profStatSpent">₱0</div>
+            <div class="prof-stat-label">Total Spent</div>
+          </div>
+          <div class="prof-stat-divider"></div>
+          <div class="prof-stat-box">
+            <div class="prof-stat-val" id="profStatRated">0</div>
+            <div class="prof-stat-label">Rated</div>
+          </div>
+        </div>
+
+        <!-- Personal Info (editable) -->
+        <div class="prof-section">
+          <div class="prof-section-title">Personal Information</div>
+
+          <div class="prof-field" id="profFieldName">
+            <div class="prof-field-icon"><i class="fa-solid fa-user"></i></div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Full Name</div>
+              <div class="prof-field-value" id="profValName">—</div>
+              <input
+                class="prof-field-input"
+                id="profInputName"
+                type="text"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="name">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="profFieldPhone">
+            <div class="prof-field-icon"><i class="fa-solid fa-phone"></i></div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Phone</div>
+              <div class="prof-field-value" id="profValPhone">—</div>
+              <input
+                class="prof-field-input"
+                id="profInputPhone"
+                type="tel"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="phone">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="profFieldAddress">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Address</div>
+              <div class="prof-field-value" id="profValAddress">—</div>
+              <input
+                class="prof-field-input"
+                id="profInputAddress"
+                type="text"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="address">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="profFieldEmail">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-envelope"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Email</div>
+              <div class="prof-field-value" id="profValEmail">—</div>
+            </div>
+            <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
+          </div>
+
+          <!-- Save edits button (hidden by default) -->
+          <button class="prof-save-btn" id="profSaveBtn" style="display: none">
+            <i class="fa-solid fa-check"></i> Save Changes
+          </button>
+        </div>
+
+        <!-- Saved Addresses -->
+        <div class="prof-section">
+          <div class="prof-section-title">
+            Saved Addresses
+            <button class="prof-section-action" id="profAddAddress">
+              <i class="fa-solid fa-plus"></i> Add
+            </button>
+          </div>
+          <div id="profAddressList" class="prof-address-list">
+            <div class="prof-empty-mini">No saved addresses yet</div>
+          </div>
+        </div>
+
+        <!-- Account & Security -->
+        <div class="prof-section">
+          <div class="prof-section-title">Account & Security</div>
+
+          <div class="prof-menu-item" id="profChangePassword">
+            <div class="prof-menu-icon"><i class="fa-solid fa-lock"></i></div>
+            <span>Change Password</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+          <div class="prof-menu-item" id="profPreferences">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-sliders"></i>
+            </div>
+            <span>Preferences</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="prof-section">
+          <div class="prof-section-title">Quick Links</div>
+
+          <div class="prof-menu-item" id="menuChatHistory">
+            <div class="prof-menu-icon">
               <i class="fa-solid fa-comments"></i>
-              <span>Chat History</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
             </div>
-            <div class="profile-menu-item" id="menuOrders">
-              <i class="fa-solid fa-receipt"></i>
-              <span>Order History</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
-            <div class="profile-menu-item" id="menuNotifications">
-              <i class="fa-solid fa-bell"></i>
-              <span>Notifications</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
-            <div class="profile-menu-item danger" id="menuLogout">
-              <i class="fa-solid fa-right-from-bracket"></i>
-              <span>Logout</span>
-              <i class="fa-solid fa-chevron-right menu-arrow"></i>
-            </div>
+            <span>Chat History</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
           </div>
+          <div class="prof-menu-item" id="menuOrders">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-receipt"></i>
+            </div>
+            <span>Order History</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+          <div class="prof-menu-item" id="menuNotifications">
+            <div class="prof-menu-icon"><i class="fa-solid fa-bell"></i></div>
+            <span>Notifications</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div class="prof-section">
+          <div class="prof-menu-item danger" id="menuLogout">
+            <div class="prof-menu-icon">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <span>Logout</span>
+            <i class="fa-solid fa-chevron-right prof-menu-arrow"></i>
+          </div>
+        </div>
+
+        <div style="height: 30px"></div>
+      </div>
+    </div>
+
+    <!-- ═══════ CHANGE PASSWORD MODAL ═══════ -->
+    <div class="prof-modal-overlay" id="changePasswordOverlay">
+      <div class="prof-modal">
+        <div class="prof-modal-header">
+          <h3>Change Password</h3>
+          <button class="prof-modal-close" id="closePasswordModal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="prof-modal-body">
+          <div class="prof-input-group">
+            <label>Current Password</label>
+            <input
+              type="password"
+              id="currentPasswordInput"
+              placeholder="Enter current password"
+            />
+          </div>
+          <div class="prof-input-group">
+            <label>New Password</label>
+            <input
+              type="password"
+              id="newPasswordInput"
+              placeholder="Enter new password"
+            />
+          </div>
+          <div class="prof-input-group">
+            <label>Confirm New Password</label>
+            <input
+              type="password"
+              id="confirmPasswordInput"
+              placeholder="Confirm new password"
+            />
+          </div>
+          <button class="prof-modal-submit" id="submitPasswordBtn">
+            <i class="fa-solid fa-check"></i> Update Password
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PREFERENCES MODAL ═══════ -->
+    <div class="prof-modal-overlay" id="preferencesOverlay">
+      <div class="prof-modal">
+        <div class="prof-modal-header">
+          <h3>Preferences</h3>
+          <button class="prof-modal-close" id="closePrefsModal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="prof-modal-body">
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Push Notifications</div>
+              <div class="prof-pref-desc">
+                Receive delivery updates & promotions
+              </div>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="prefNotifications" checked />
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Sound Alerts</div>
+              <div class="prof-pref-desc">Play sounds for new messages</div>
+            </div>
+            <label class="prof-toggle">
+              <input type="checkbox" id="prefSounds" checked />
+              <span class="prof-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="prof-pref-item">
+            <div>
+              <div class="prof-pref-label">Default Payment</div>
+              <div class="prof-pref-desc">
+                Choose your preferred payment method
+              </div>
+            </div>
+            <select class="prof-select" id="prefPayment">
+              <option value="cod">Cash on Delivery</option>
+              <option value="gcash">GCash</option>
+            </select>
+          </div>
+          <button class="prof-modal-submit" id="savePrefsBtn">
+            <i class="fa-solid fa-check"></i> Save Preferences
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ ADD ADDRESS MODAL ═══════ -->
+    <div class="prof-modal-overlay" id="addAddressOverlay">
+      <div class="prof-modal">
+        <div class="prof-modal-header">
+          <h3 id="addressModalTitle">Add Address</h3>
+          <button class="prof-modal-close" id="closeAddressModal">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="prof-modal-body">
+          <div class="prof-input-group">
+            <label>Label</label>
+            <div class="prof-label-chips">
+              <button class="prof-chip active" data-label="Home">
+                <i class="fa-solid fa-house"></i> Home
+              </button>
+              <button class="prof-chip" data-label="Work">
+                <i class="fa-solid fa-briefcase"></i> Work
+              </button>
+              <button class="prof-chip" data-label="Other">
+                <i class="fa-solid fa-location-dot"></i> Other
+              </button>
+            </div>
+            <input
+              type="text"
+              id="addressLabelInput"
+              placeholder="Custom label"
+              style="display: none"
+            />
+          </div>
+          <div class="prof-input-group">
+            <label>Full Address</label>
+            <input
+              type="text"
+              id="addressTextInput"
+              placeholder="e.g. 123 Main St, Barangay..."
+            />
+          </div>
+          <label class="prof-checkbox-wrap">
+            <input type="checkbox" id="addressDefaultCheck" />
+            <span>Set as default address</span>
+          </label>
+          <input type="hidden" id="editAddressId" value="" />
+          <button class="prof-modal-submit" id="saveAddressBtn">
+            <i class="fa-solid fa-check"></i> Save Address
+          </button>
         </div>
       </div>
     </div>
