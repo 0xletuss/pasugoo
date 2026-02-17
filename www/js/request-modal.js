@@ -2026,8 +2026,19 @@ class RequestModalController {
 
     // Event listeners
     overlay.querySelector("#rateRiderBtn")?.addEventListener("click", () => {
-      // TODO: Implement rating modal
-      alert("Rating feature coming soon!");
+      overlay.remove();
+      // Open the rating modal from dashboard controller
+      if (window.showRatingModal) {
+        window.showRatingModal(request.request_id);
+      } else {
+        // Fallback: navigate to rating panel
+        const ratingOverlay = document.getElementById("ratingOverlay");
+        if (ratingOverlay) {
+          ratingOverlay.classList.add("active");
+          ratingOverlay.dataset.requestId = request.request_id;
+        }
+      }
+      this.completeDelivery();
     });
 
     overlay.querySelector("#doneBtn")?.addEventListener("click", () => {

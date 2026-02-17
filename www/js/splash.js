@@ -57,7 +57,15 @@ class SplashScreen {
       ]);
 
       if (response.ok) {
-        // Token is valid, user is authenticated
+        // Token is valid, user is authenticated - update stored user data
+        try {
+          const data = await response.json();
+          if (data.data) {
+            localStorage.setItem("user_data", JSON.stringify(data.data));
+          }
+        } catch (e) {
+          /* ignore parse error */
+        }
         console.log("SplashScreen: Token verified, navigating to dashboard");
         this.navigateToDashboard();
       } else if (response.status === 401) {
@@ -127,9 +135,21 @@ class SplashScreen {
   }
 
   /**
-   * Navigate to dashboard
+   * Navigate to dashboard based on user role
    */
   static navigateToDashboard() {
+    try {
+      const userData = localStorage.getItem("user_data");
+      if (userData) {
+        const user = JSON.parse(userData);
+        if (user.user_type === "rider") {
+          this.fadeOutAndNavigate("pages/rider-dashboard.html");
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("SplashScreen: Error parsing user_data for routing", e);
+    }
     this.fadeOutAndNavigate("pages/dashboard.html");
   }
 

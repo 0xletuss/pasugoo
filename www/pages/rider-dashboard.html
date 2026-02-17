@@ -14,6 +14,7 @@
     <meta name="theme-color" content="#1a1a1a" />
     <title>Rider Dashboard - Pasugo</title>
     <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/app-pages.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -813,26 +814,220 @@
 
     <!-- Bottom Navigation -->
     <div class="rider-bottom-nav">
-      <a href="#" class="rider-nav-item" id="statsNav" title="Stats">
+      <a
+        href="#"
+        class="rider-nav-item"
+        id="statsNav"
+        title="Stats"
+        data-panel="riderStatsPanel"
+      >
         <i class="fa-solid fa-chart-line"></i>
         <span>Stats</span>
       </a>
-      <a href="#" class="rider-nav-item" id="messageNav" title="Messages">
+      <a
+        href="#"
+        class="rider-nav-item"
+        id="messageNav"
+        title="Messages"
+        data-panel="riderChatPanel"
+      >
         <i class="fa-regular fa-comments"></i>
         <span>Chat</span>
+        <span class="nav-badge" id="riderChatBadge"></span>
       </a>
-      <a href="#" class="rider-nav-item active" id="mapNav" title="Map">
+      <a
+        href="#"
+        class="rider-nav-item active"
+        id="mapNav"
+        title="Map"
+        data-panel="riderMapPanel"
+      >
         <i class="fa-solid fa-map"></i>
         <span>Map</span>
       </a>
-      <a href="#" class="rider-nav-item" id="profileNav" title="Profile">
+      <a
+        href="#"
+        class="rider-nav-item"
+        id="notifNav"
+        title="Notifications"
+        data-panel="riderNotifPanel"
+      >
+        <i class="fa-solid fa-bell"></i>
+        <span>Alerts</span>
+        <span class="nav-badge" id="riderNotifBadge"></span>
+      </a>
+      <a
+        href="#"
+        class="rider-nav-item"
+        id="profileNav"
+        title="Profile"
+        data-panel="riderProfilePanel"
+      >
         <i class="fa-solid fa-user"></i>
         <span>Profile</span>
       </a>
-      <a href="#" class="rider-nav-item" id="logoutNav" title="Logout">
-        <i class="fa-solid fa-right-from-bracket"></i>
-        <span>Logout</span>
-      </a>
+    </div>
+
+    <!-- ═══════ RIDER STATS PANEL ═══════ -->
+    <div class="app-panel" id="riderStatsPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="riderStatsBack">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>My Stats</h1>
+      </div>
+      <div class="app-body">
+        <div class="stats-grid">
+          <div class="stat-card highlight">
+            <span class="stat-value" id="statRating">0.0</span>
+            <span class="stat-label">Avg Rating</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statCompleted">0</span>
+            <span class="stat-label">Completed</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statEarnings">₱0</span>
+            <span class="stat-label">Earnings</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statTotalRatings">0</span>
+            <span class="stat-label">Ratings</span>
+          </div>
+        </div>
+
+        <div style="padding: 0 16px 8px">
+          <h3 style="margin: 16px 0 12px; font-size: 16px">Recent Ratings</h3>
+        </div>
+        <div class="order-list" id="riderRatingsList">
+          <div class="page-loader">
+            <div class="spinner"></div>
+            <span>Loading ratings...</span>
+          </div>
+        </div>
+
+        <div style="padding: 0 16px 8px">
+          <h3 style="margin: 16px 0 12px; font-size: 16px">
+            Recent Deliveries
+          </h3>
+        </div>
+        <div class="order-list" id="riderOrdersList">
+          <div class="page-loader">
+            <div class="spinner"></div>
+            <span>Loading deliveries...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIDER CHAT HISTORY PANEL ═══════ -->
+    <div class="app-panel" id="riderChatPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="riderChatBack">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Chat History</h1>
+      </div>
+      <div class="app-body">
+        <div class="conversation-list" id="riderConversationList">
+          <div class="page-loader">
+            <div class="spinner"></div>
+            <span>Loading chats...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIDER NOTIFICATIONS PANEL ═══════ -->
+    <div class="app-panel" id="riderNotifPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="riderNotifBack">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Notifications</h1>
+        <button class="header-action" id="riderMarkAllRead">
+          Mark all read
+        </button>
+      </div>
+      <div class="app-body">
+        <div class="notification-list" id="riderNotifList">
+          <div class="page-loader">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIDER PROFILE PANEL ═══════ -->
+    <div class="app-panel" id="riderProfilePanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="riderProfileBack">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>My Profile</h1>
+      </div>
+      <div class="app-body">
+        <div class="profile-section">
+          <div class="profile-card">
+            <div class="profile-avatar">
+              <i class="fa-solid fa-motorcycle"></i>
+            </div>
+            <div class="profile-name" id="riderProfileName">Loading...</div>
+            <div class="profile-email" id="riderProfileEmail"></div>
+            <div class="profile-phone" id="riderProfilePhone"></div>
+            <div
+              style="
+                margin-top: 12px;
+                display: flex;
+                justify-content: center;
+                gap: 20px;
+              "
+            >
+              <div style="text-align: center">
+                <div
+                  style="font-size: 20px; font-weight: 700; color: #ffc107"
+                  id="riderProfileRating"
+                >
+                  0.0
+                </div>
+                <div style="font-size: 11px; color: #999">Rating</div>
+              </div>
+              <div style="text-align: center">
+                <div
+                  style="font-size: 20px; font-weight: 700"
+                  id="riderProfileTasks"
+                >
+                  0
+                </div>
+                <div style="font-size: 11px; color: #999">Deliveries</div>
+              </div>
+            </div>
+          </div>
+          <div class="profile-menu">
+            <div class="profile-menu-item" id="riderMenuStats">
+              <i class="fa-solid fa-chart-line"></i>
+              <span>My Stats & Ratings</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item" id="riderMenuChat">
+              <i class="fa-solid fa-comments"></i>
+              <span>Chat History</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item" id="riderMenuNotifs">
+              <i class="fa-solid fa-bell"></i>
+              <span>Notifications</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item danger" id="riderMenuLogout">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Logout</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Leaflet JS -->
@@ -860,143 +1055,7 @@
     <!-- Rider Chat Manager -->
     <script src="../js/rider-chat.js"></script>
 
-    <!-- Rider Dashboard Logic -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const userData = localStorage.getItem("user_data");
-
-        if (!userData) {
-          window.location.href = "login.html";
-          return;
-        }
-
-        const user = JSON.parse(userData);
-        const riderNameEl = document.getElementById("riderName");
-        if (riderNameEl) {
-          riderNameEl.textContent = user.full_name || "Rider";
-        }
-
-        // Toggle Online/Offline
-        const toggleOnlineBtn = document.getElementById("toggleOnlineBtn");
-        let isOnline = false;
-
-        if (toggleOnlineBtn) {
-          toggleOnlineBtn.addEventListener("click", () => {
-            isOnline = !isOnline;
-            updateOnlineStatus(isOnline);
-          });
-        }
-
-        async function updateOnlineStatus(online) {
-          const btn = document.getElementById("toggleOnlineBtn");
-          const newStatus = online ? "available" : "offline";
-
-          // Update backend availability status
-          try {
-            const token = localStorage.getItem("access_token");
-            const res = await fetch(
-              "https://pasugo.onrender.com/api/riders/status",
-              {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ status: newStatus }),
-              },
-            );
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({}));
-              console.error("Failed to update rider status:", err);
-            } else {
-              console.log(`✅ Rider status updated to: ${newStatus}`);
-            }
-          } catch (e) {
-            console.error("Error updating rider status:", e);
-          }
-
-          if (online) {
-            btn.innerHTML =
-              '<i class="fa-solid fa-circle" style="color: #28a745;"></i> Go Offline';
-            btn.classList.remove("offline");
-            btn.style.background = "#28a745";
-            btn.style.color = "white";
-            if (window.riderTracker) {
-              window.riderTracker.init();
-            }
-          } else {
-            btn.innerHTML = '<i class="fa-solid fa-circle"></i> Go Online';
-            btn.classList.add("offline");
-            btn.style.background = "#dc3545";
-            btn.style.color = "white";
-            if (window.riderTracker) {
-              window.riderTracker.stop();
-            }
-          }
-        }
-
-        // Logout
-        const logoutNav = document.getElementById("logoutNav");
-        if (logoutNav) {
-          logoutNav.addEventListener("click", (e) => {
-            e.preventDefault();
-            if (
-              confirm(
-                "Are you sure you want to logout? Location tracking will stop.",
-              )
-            ) {
-              if (window.riderTracker) {
-                window.riderTracker.stop();
-              }
-              if (window.riderRequestHandler) {
-                window.riderRequestHandler.stop();
-              }
-              if (window.riderMapController) {
-                window.riderMapController.stop();
-              }
-              if (window.auth && window.auth.logout) {
-                window.auth.logout();
-              } else {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = "login.html";
-              }
-            }
-          });
-        }
-
-        // Toggle requests modal
-        const requestsBadge = document.getElementById("requestsBadge");
-        const requestsModal = document.getElementById("requestsModal");
-        const closeRequestsBtn = document.getElementById("closeRequestsBtn");
-
-        if (requestsBadge) {
-          requestsBadge.addEventListener("click", () => {
-            requestsModal.classList.toggle("hidden");
-          });
-        }
-
-        if (closeRequestsBtn) {
-          closeRequestsBtn.addEventListener("click", () => {
-            requestsModal.classList.add("hidden");
-          });
-        }
-
-        // Navigation items
-        const navItems = document.querySelectorAll(".rider-nav-item");
-        navItems.forEach((item) => {
-          item.addEventListener("click", (e) => {
-            if (item.id === "logoutNav") return; // Let logout handler deal with it
-
-            e.preventDefault();
-            navItems.forEach((nav) => nav.classList.remove("active"));
-            item.classList.add("active");
-
-            // You can add navigation logic here
-            console.log("Navigated to:", item.id);
-          });
-        });
-      });
-    </script>
+    <!-- Rider Dashboard Controller -->
+    <script src="../js/rider-dashboard-controller.js"></script>
   </body>
 </html>

@@ -15,6 +15,7 @@
     <title>Customer Home - Pasugo</title>
     <link rel="stylesheet" href="../css/styles.css" />
     <link rel="stylesheet" href="../css/request-modal.css" />
+    <link rel="stylesheet" href="../css/app-pages.css" />
 
     <link
       rel="stylesheet"
@@ -228,31 +229,201 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="bottom-nav-dock">
-        <a href="#" class="nav-item">
-          <i class="fa-solid fa-clock-rotate-left"></i>
-        </a>
+    <div class="bottom-nav-dock">
+      <button class="nav-tab" id="navHistory" data-panel="historyPanel">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>History</span>
+      </button>
 
-        <a href="#" class="nav-item">
-          <i class="fa-regular fa-bell"></i>
-        </a>
+      <button
+        class="nav-tab"
+        id="navNotifications"
+        data-panel="notificationsPanel"
+      >
+        <i class="fa-regular fa-bell"></i>
+        <span>Alerts</span>
+        <span class="badge" id="notifBadge">0</span>
+      </button>
 
-        <div class="nav-fab-container">
-          <div class="nav-fab">
-            <i class="fa-solid fa-plus"></i>
+      <div class="nav-tab-fab" id="navNewRequest">
+        <i class="fa-solid fa-plus"></i>
+      </div>
+
+      <button class="nav-tab active" id="navMap" data-panel="mapPanel">
+        <i class="fa-solid fa-map"></i>
+        <span>Map</span>
+      </button>
+
+      <button class="nav-tab" id="navProfile" data-panel="profilePanel">
+        <i class="fa-solid fa-user"></i>
+        <span>Profile</span>
+      </button>
+    </div>
+
+    <!-- ═══════ HISTORY PANEL (hidden by default) ═══════ -->
+    <div class="app-panel" id="historyPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="historyBackBtn">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>My Orders</h1>
+      </div>
+      <div class="app-body">
+        <div class="section-tabs" id="historyTabs">
+          <button class="section-tab active" data-filter="all">All</button>
+          <button class="section-tab" data-filter="pending">Pending</button>
+          <button class="section-tab" data-filter="in_progress">Active</button>
+          <button class="section-tab" data-filter="completed">Completed</button>
+          <button class="section-tab" data-filter="cancelled">Cancelled</button>
+        </div>
+        <div class="order-list" id="orderList">
+          <div class="page-loader" id="ordersLoader">
+            <div class="spinner"></div>
+            <span>Loading orders...</span>
           </div>
         </div>
-
-        <a href="#" class="nav-item active">
-          <i class="fa-solid fa-car"></i>
-        </a>
-
-        <a href="#" class="nav-item" id="logoutBtn" title="Logout">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </a>
       </div>
     </div>
+
+    <!-- ═══════ NOTIFICATIONS PANEL ═══════ -->
+    <div class="app-panel" id="notificationsPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="notifsBackBtn">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Notifications</h1>
+        <button class="header-action" id="markAllReadBtn">Mark all read</button>
+      </div>
+      <div class="app-body">
+        <div class="notification-list" id="notificationList">
+          <div class="page-loader" id="notifsLoader">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ PROFILE PANEL ═══════ -->
+    <div class="app-panel" id="profilePanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="profileBackBtn">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>My Profile</h1>
+      </div>
+      <div class="app-body">
+        <div class="profile-section">
+          <div class="profile-card">
+            <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
+            <div class="profile-name" id="profileName">Loading...</div>
+            <div class="profile-email" id="profileEmail"></div>
+            <div class="profile-phone" id="profilePhone"></div>
+          </div>
+          <div class="profile-menu">
+            <div class="profile-menu-item" id="menuChatHistory">
+              <i class="fa-solid fa-comments"></i>
+              <span>Chat History</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item" id="menuOrders">
+              <i class="fa-solid fa-receipt"></i>
+              <span>Order History</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item" id="menuNotifications">
+              <i class="fa-solid fa-bell"></i>
+              <span>Notifications</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+            <div class="profile-menu-item danger" id="menuLogout">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Logout</span>
+              <i class="fa-solid fa-chevron-right menu-arrow"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ CHAT HISTORY PANEL ═══════ -->
+    <div class="app-panel" id="chatHistoryPanel" style="display: none">
+      <div class="app-header">
+        <button class="back-btn" id="chatHistoryBackBtn">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <h1>Chat History</h1>
+      </div>
+      <div class="app-body">
+        <div class="conversation-list" id="conversationList">
+          <div class="page-loader" id="convosLoader">
+            <div class="spinner"></div>
+            <span>Loading chats...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ RATING MODAL (overlay) ═══════ -->
+    <div class="rating-overlay" id="ratingOverlay">
+      <div class="rating-card">
+        <h3>Rate Your Rider</h3>
+        <p class="rating-subtitle">How was your delivery experience?</p>
+        <div class="star-rating" id="mainStarRating">
+          <i class="fa-solid fa-star star" data-value="1"></i>
+          <i class="fa-solid fa-star star" data-value="2"></i>
+          <i class="fa-solid fa-star star" data-value="3"></i>
+          <i class="fa-solid fa-star star" data-value="4"></i>
+          <i class="fa-solid fa-star star" data-value="5"></i>
+        </div>
+        <div class="rating-categories">
+          <div class="rating-cat">
+            <span>Communication</span>
+            <div class="cat-stars" data-cat="communication">
+              <i class="fa-solid fa-star star" data-value="1"></i>
+              <i class="fa-solid fa-star star" data-value="2"></i>
+              <i class="fa-solid fa-star star" data-value="3"></i>
+              <i class="fa-solid fa-star star" data-value="4"></i>
+              <i class="fa-solid fa-star star" data-value="5"></i>
+            </div>
+          </div>
+          <div class="rating-cat">
+            <span>Speed</span>
+            <div class="cat-stars" data-cat="speed">
+              <i class="fa-solid fa-star star" data-value="1"></i>
+              <i class="fa-solid fa-star star" data-value="2"></i>
+              <i class="fa-solid fa-star star" data-value="3"></i>
+              <i class="fa-solid fa-star star" data-value="4"></i>
+              <i class="fa-solid fa-star star" data-value="5"></i>
+            </div>
+          </div>
+          <div class="rating-cat">
+            <span>Service</span>
+            <div class="cat-stars" data-cat="service">
+              <i class="fa-solid fa-star star" data-value="1"></i>
+              <i class="fa-solid fa-star star" data-value="2"></i>
+              <i class="fa-solid fa-star star" data-value="3"></i>
+              <i class="fa-solid fa-star star" data-value="4"></i>
+              <i class="fa-solid fa-star star" data-value="5"></i>
+            </div>
+          </div>
+        </div>
+        <textarea
+          class="rating-feedback"
+          id="ratingFeedback"
+          placeholder="Tell us about your experience (optional)"
+          rows="3"
+        ></textarea>
+        <button class="rating-submit-btn" id="submitRatingBtn" disabled>
+          Submit Rating
+        </button>
+        <button class="rating-skip" id="skipRatingBtn">Skip for now</button>
+        <input type="hidden" id="ratingRequestId" value="" />
+      </div>
+    </div>
+
     <!-- ============================================
      CLEAN REQUEST MODAL SYSTEM - NO DUPLICATES
      Replace everything between </div> above and <script> tags below
@@ -924,27 +1095,7 @@
     <!-- ✅ REQUEST MODAL (uses api_request.js) -->
     <script src="../js/request-modal.js"></script>
 
-    <!-- Logout handler -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const logoutBtn = document.getElementById("logoutBtn");
-
-        if (logoutBtn) {
-          logoutBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-
-            if (confirm("Are you sure you want to logout?")) {
-              if (window.auth && window.auth.logout) {
-                window.auth.logout();
-              } else {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = "login.html";
-              }
-            }
-          });
-        }
-      });
-    </script>
+    <!-- ✅ Dashboard Controller (navbar, panels, notifications, rating, history) -->
+    <script src="../js/dashboard-controller.js"></script>
   </body>
 </html>

@@ -60,7 +60,9 @@ class RiderChatManager {
       await this._verifyAndConnect(savedRequestId, savedCustomerName);
     } else {
       // No saved request — check backend for any active assigned/in_progress requests
-      console.log("[RiderChat] No saved request, checking backend for active tasks...");
+      console.log(
+        "[RiderChat] No saved request, checking backend for active tasks...",
+      );
       await this._recoverFromBackend();
     }
   }
@@ -68,20 +70,34 @@ class RiderChatManager {
   // Check backend for rider's active request and auto-recover
   async _recoverFromBackend() {
     try {
-      const fetchFn = typeof authenticatedFetch === "function" ? authenticatedFetch : 
-        (url) => fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } });
+      const fetchFn =
+        typeof authenticatedFetch === "function"
+          ? authenticatedFetch
+          : (url) =>
+              fetch(url, {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+                },
+              });
 
       // Check assigned first, then in_progress
       for (const st of ["assigned", "in_progress"]) {
-        const res = await fetchFn(`${PASUGO_API_BASE}/api/requests/my-requests?status=${st}&page_size=1`);
+        const res = await fetchFn(
+          `${PASUGO_API_BASE}/api/requests/my-requests?status=${st}&page_size=1`,
+        );
         if (!res.ok) continue;
         const data = await res.json();
         if (data.data?.length > 0) {
           const req = data.data[0];
-          console.log(`🔄 [RiderChat] Found active ${st} request #${req.request_id} from backend`);
+          console.log(
+            `🔄 [RiderChat] Found active ${st} request #${req.request_id} from backend`,
+          );
           // Save to localStorage so future reloads are fast
           localStorage.setItem("active_request_id", req.request_id);
-          localStorage.setItem("active_request_customer", req.customer_name || "Customer");
+          localStorage.setItem(
+            "active_request_customer",
+            req.customer_name || "Customer",
+          );
           // Connect
           this.setCustomerInfo(req.customer_name || "Customer");
           await this.connect(req.request_id);
@@ -119,7 +135,9 @@ class RiderChatManager {
           await this._recoverFromBackend();
           return;
         }
-        console.warn(`[RiderChat] Restore check got ${res.status}, trying reconnect anyway...`);
+        console.warn(
+          `[RiderChat] Restore check got ${res.status}, trying reconnect anyway...`,
+        );
         this.setCustomerInfo(customerName || "Customer");
         await this.connect(parseInt(requestId, 10));
         return;
@@ -135,13 +153,17 @@ class RiderChatManager {
       }
 
       // Update customer name from backend if available
-      const backendCustomerName = data.data?.customer_name || customerName || "Customer";
+      const backendCustomerName =
+        data.data?.customer_name || customerName || "Customer";
       localStorage.setItem("active_request_customer", backendCustomerName);
 
       this.setCustomerInfo(backendCustomerName);
       await this.connect(parseInt(requestId, 10));
     } catch (e) {
-      console.error("Failed to restore request (network error, keeping state):", e);
+      console.error(
+        "Failed to restore request (network error, keeping state):",
+        e,
+      );
       try {
         this.setCustomerInfo(customerName || "Customer");
         await this.connect(parseInt(requestId, 10));
