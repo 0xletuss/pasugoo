@@ -502,24 +502,41 @@ class RiderDashboardController {
   }
 
   _openConversation(conversationId, requestId, customerName) {
-    // Use the existing RiderChatManager if available and we have a request ID
-    if (window.riderChatManager && requestId) {
-      // Switch back to map panel first
-      this.showPanel("riderMapPanel");
-      // Set customer name and connect via the standard flow
-      window.riderChatManager.customerName = customerName || "Customer";
-      window.riderChatManager.setCustomerInfo(customerName || "Customer");
+    if (!window.riderChatManager) {
+      console.warn("RiderChatManager not available");
+      return;
+    }
+
+    // If the rider already has an active live-chat for a DIFFERENT request,
+    // warn before switching.
+    const currentReqId = window.riderChatManager.requestId;
+    if (currentReqId && requestId && currentReqId !== parseInt(requestId)) {
+      if (
+        !confirm(
+          "You have an active chat open. Switch to this conversation instead?",
+        )
+      ) {
+        return;
+      }
+      // Disconnect the old one before connecting the new one
+      window.riderChatManager.disconnect();
+    }
+
+    // Set customer info on the live chat panel
+    window.riderChatManager.customerName = customerName || "Customer";
+    window.riderChatManager.setCustomerInfo(customerName || "Customer");
+
+    if (requestId) {
+      // Connect via full flow (gets/creates conversation, loads history,
+      // opens WebSocket, auto-opens panel). If the request is completed,
+      // connect → fetchRequestDetails will detect it and auto-close,
+      // but the user still gets to see the history briefly.
       window.riderChatManager.connect(parseInt(requestId));
-    } else if (window.riderChatManager && conversationId) {
-      // If we only have conversation_id but no request_id, load history directly
-      this.showPanel("riderMapPanel");
+    } else if (conversationId) {
+      // Legacy / no request_id: load history read-only
       window.riderChatManager.conversationId = parseInt(conversationId);
-      window.riderChatManager.customerName = customerName || "Customer";
-      window.riderChatManager.setCustomerInfo(customerName || "Customer");
       window.riderChatManager.loadHistory();
       window.riderChatManager.openChat();
-    } else {
-      console.warn("RiderChatManager not available or no request ID");
     }
   }
 

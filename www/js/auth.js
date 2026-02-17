@@ -12,6 +12,95 @@ const API_BASE_URL_AUTH =
     : "https://pasugo.onrender.com");
 
 // ============================================
+// GLOBAL FETCH INTERCEPTOR – auto-refresh on 401
+// Wraps the native fetch so every call in the app
+// (dashboard-controller, rider-chat, etc.) gets
+// automatic token refresh without code changes.
+// ============================================
+(function installFetchInterceptor() {
+  const _originalFetch = window.fetch;
+  let _refreshing = null;
+
+  window.fetch = async function (input, init) {
+    let response = await _originalFetch.call(window, input, init);
+
+    // Only intercept 401s for our own API calls that carry a Bearer token
+    const url = typeof input === "string" ? input : input?.url || "";
+    const authHeader =
+      init?.headers?.Authorization ||
+      init?.headers?.authorization ||
+      (init?.headers instanceof Headers
+        ? init.headers.get("Authorization")
+        : "");
+
+    if (
+      response.status === 401 &&
+      authHeader &&
+      String(authHeader).startsWith("Bearer ") &&
+      url.includes("/api/")
+    ) {
+      // Avoid infinite loop – don't intercept the refresh call itself
+      if (url.includes("/api/auth/refresh")) return response;
+
+      try {
+        // Deduplicate concurrent refreshes
+        if (!_refreshing) {
+          _refreshing = (async () => {
+            const rt = localStorage.getItem("refresh_token");
+            if (!rt) throw new Error("No refresh token");
+
+            const rRes = await _originalFetch.call(
+              window,
+              `${API_BASE_URL_AUTH}/api/auth/refresh`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: rt }),
+              },
+            );
+
+            if (!rRes.ok) throw new Error("Refresh rejected");
+
+            const rData = await rRes.json();
+            localStorage.setItem("access_token", rData.data.access_token);
+            if (rData.data.refresh_token)
+              localStorage.setItem("refresh_token", rData.data.refresh_token);
+            return rData.data.access_token;
+          })();
+        }
+
+        const newToken = await _refreshing;
+        _refreshing = null;
+
+        // Retry original request with new token
+        const newInit = { ...init, headers: { ...init?.headers } };
+        if (newInit.headers instanceof Headers) {
+          newInit.headers.set("Authorization", `Bearer ${newToken}`);
+        } else {
+          newInit.headers.Authorization = `Bearer ${newToken}`;
+        }
+        response = await _originalFetch.call(window, input, newInit);
+      } catch (refreshErr) {
+        _refreshing = null;
+        console.warn("Auto-refresh failed:", refreshErr.message);
+        // Only redirect to login if we truly have no valid session
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        if (
+          !window.location.href.includes("login.html") &&
+          !window.location.href.includes("register.html") &&
+          !window.location.href.includes("index.html")
+        ) {
+          window.location.href = "login.html";
+        }
+      }
+    }
+
+    return response;
+  };
+})();
+
+// ============================================
 // TOKEN STORAGE SERVICE
 // ============================================
 

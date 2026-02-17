@@ -722,7 +722,7 @@ class RiderChatManager {
     // Create chat panel container
     const panel = document.createElement("div");
     panel.className = "rider-chat-panel";
-    panel.id = "riderChatPanel";
+    panel.id = "riderLiveChatPanel";
     panel.innerHTML = `
       <div class="rider-chat-header">
         <div class="customer-info">
@@ -794,7 +794,7 @@ class RiderChatManager {
     document.body.appendChild(banner);
 
     // Store references
-    this.chatPanel = document.getElementById("riderChatPanel");
+    this.chatPanel = document.getElementById("riderLiveChatPanel");
     this.chatContainer = document.getElementById("riderChatMessages");
     this.chatInput = document.getElementById("riderChatInput");
     this.customerStatus = document.getElementById("chatCustomerStatus");
@@ -844,19 +844,9 @@ class RiderChatManager {
       });
     }
 
-    // Message nav click
-    const messageNav = document.getElementById("messageNav");
-    if (messageNav) {
-      messageNav.style.position = "relative";
-      messageNav.addEventListener("click", (e) => {
-        e.preventDefault();
-        if (this.requestId) {
-          this.toggleChat();
-        } else {
-          alert("No active request to chat about.");
-        }
-      });
-    }
+    // Message nav click — no longer handled here.
+    // The dashboard controller shows the Chat History panel instead.
+    // The rider opens live chat via the active task banner or from chat history.
 
     // Active task banner click
     const banner = document.getElementById("activeTaskBanner");
@@ -905,6 +895,11 @@ class RiderChatManager {
     try {
       const token = localStorage.getItem("access_token");
 
+      // Re-enable input in case it was disabled from a previous completed chat
+      if (this.chatInput) this.chatInput.disabled = false;
+      const sendBtn = document.getElementById("riderChatSend");
+      if (sendBtn) sendBtn.disabled = false;
+
       // Get or create conversation
       const res = await fetch(`${PASUGO_API_BASE}/api/messages/conversations`, {
         method: "POST",
@@ -939,6 +934,9 @@ class RiderChatManager {
 
       // Update badge on message nav
       this.updateChatBadge();
+
+      // Auto-open the chat panel so the user sees it
+      this.openChat();
     } catch (err) {
       console.error("[RiderChat] connect error:", err);
       this.showSystem("Could not connect to chat: " + err.message);
@@ -1017,7 +1015,12 @@ class RiderChatManager {
     this.currentRequestStatus = null;
     this.reconnectAttempts = 0;
     this.messageQueue = [];
+    // Re-enable input for next conversation
+    if (this.chatInput) this.chatInput.disabled = false;
+    const sendBtn = document.getElementById("riderChatSend");
+    if (sendBtn) sendBtn.disabled = false;
     this.clearActiveRequest();
+    this.hideActiveTaskBanner();
     this.closeChat();
   }
 
@@ -1044,12 +1047,26 @@ class RiderChatManager {
 
         if (status === "completed" || status === "cancelled") {
           console.log(
-            `📋 [RiderChat] Request externally ${status}, auto-closing`,
+            `📋 [RiderChat] Request externally ${status}, switching to read-only`,
           );
           this.showSystem(`This request has been ${status}.`);
           this.currentRequestDetails = data.data;
           this.updateTaskActionButtons(status);
-          setTimeout(() => this.disconnect(), 2000);
+          // Disable input and stop polling, but keep chat panel open
+          if (this.chatInput) this.chatInput.disabled = true;
+          const sendBtn2 = document.getElementById("riderChatSend");
+          if (sendBtn2) sendBtn2.disabled = true;
+          this.setStatus(
+            status === "completed" ? "Completed" : "Cancelled",
+            "#999",
+          );
+          clearInterval(this.statusPollInterval);
+          this.statusPollInterval = null;
+          if (this.ws) {
+            this.ws.close(1000);
+            this.ws = null;
+          }
+          this.isConnected = false;
           return;
         }
 
@@ -1094,12 +1111,29 @@ class RiderChatManager {
       // Auto-close chat if request is already completed or cancelled
       if (reqStatus === "completed" || reqStatus === "cancelled") {
         console.log(
-          `📋 [RiderChat] Request is ${reqStatus}, auto-closing chat`,
+          `📋 [RiderChat] Request is ${reqStatus}, showing read-only`,
         );
         this.showSystem(`This request has been ${reqStatus}.`);
-        setTimeout(() => {
-          this.disconnect();
-        }, 1500);
+        // Show task details in read-only but do NOT auto-disconnect —
+        // let the rider browse the chat history. They close manually.
+        this.displayTaskDetails(request);
+        this.updateTaskActionButtons(request.status);
+        // Disable input area
+        if (this.chatInput) this.chatInput.disabled = true;
+        const sendBtn = document.getElementById("riderChatSend");
+        if (sendBtn) sendBtn.disabled = true;
+        // Stop WebSocket & polling since request is done
+        clearInterval(this.statusPollInterval);
+        this.statusPollInterval = null;
+        if (this.ws) {
+          this.ws.close(1000);
+          this.ws = null;
+        }
+        this.isConnected = false;
+        this.setStatus(
+          reqStatus === "completed" ? "Completed" : "Cancelled",
+          "#999",
+        );
         return;
       }
 
