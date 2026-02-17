@@ -96,7 +96,6 @@
   position: relative;
   background: var(--white);
   min-height: 100vh;
-  z-index: 50;
 }
 
 /* ── Bottom Navigation (Customer) ────────────────────────── */
