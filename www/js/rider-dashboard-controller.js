@@ -380,14 +380,14 @@ class RiderDashboardController {
             .join("");
         } else if (container) {
           container.innerHTML =
-            '<div class="empty-state"><i class="fa-solid fa-star-half-stroke"></i><h3>No ratings yet</h3><p>Complete deliveries to receive ratings</p></div>';
+            '<div class="empty-state"><i class="fa-solid fa-star-half-stroke"></i><h3>No ratings yet</h3><p>Complete services to receive ratings</p></div>';
         }
       }
     } catch (e) {
       console.warn("Failed to load ratings", e);
     }
 
-    // Load recent deliveries
+    // Load recent services
     try {
       const res = await fetch(
         `${RIDER_API_BASE}/api/requests/my-requests?page_size=20`,
@@ -434,7 +434,7 @@ class RiderDashboardController {
             .join("");
         } else if (container) {
           container.innerHTML =
-            '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>No deliveries yet</h3><p>Go online to receive requests!</p></div>';
+            '<div class="empty-state"><i class="fa-solid fa-box-open"></i><h3>No services yet</h3><p>Go online to receive requests!</p></div>';
         }
       }
     } catch (e) {
@@ -651,7 +651,7 @@ class RiderDashboardController {
           : "0.0";
         this._setText("rProfStatRating", ratingVal);
 
-        // Deliveries
+        // Services
         this._setText("rProfStatDeliveries", rider.total_tasks_completed || 0);
 
         // Vehicle info
