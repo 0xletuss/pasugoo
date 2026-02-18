@@ -553,17 +553,33 @@ class RiderDashboardController {
       photoInput.addEventListener("change", (e) => this._uploadProfilePhoto(e));
     }
 
-    // Inline edit buttons
+    // Inline edit buttons (personal info + contact)
     document
       .querySelectorAll("#riderProfilePanel .prof-field-edit")
       .forEach((btn) => {
-        btn.addEventListener("click", () =>
-          this._toggleFieldEdit(btn.dataset.field),
-        );
+        btn.addEventListener("click", () => {
+          const field = btn.dataset.field;
+          if (field === "gcash_name" || field === "gcash_number") {
+            this._toggleGcashFieldEdit(field);
+          } else {
+            this._toggleFieldEdit(field);
+          }
+        });
       });
 
-    // Save changes
+    // Save personal/contact changes
     this._bindClick("rProfSaveBtn", () => this._saveProfileChanges());
+
+    // Save GCash changes
+    this._bindClick("rProfSaveGcashBtn", () => this._saveGcashInfo());
+
+    // Rating box tap → go to stats panel
+    this._bindClick("rProfRatingBox", () => this.showPanel("riderStatsPanel"));
+
+    // View all ratings link
+    this._bindClick("rProfViewAllRatings", () =>
+      this.showPanel("riderStatsPanel"),
+    );
 
     // Change password modal
     this._bindClick("rProfChangePassword", () =>
@@ -610,14 +626,17 @@ class RiderDashboardController {
       });
       if (res.ok) {
         const freshUser = await res.json();
-        localStorage.setItem("user_data", JSON.stringify(freshUser));
-        this._populateProfile(freshUser);
+        // Merge with existing localStorage to preserve any fields
+        const existing = JSON.parse(localStorage.getItem("user_data") || "{}");
+        const merged = { ...existing, ...freshUser };
+        localStorage.setItem("user_data", JSON.stringify(merged));
+        this._populateProfile(merged);
       }
     } catch (e) {
       /* use cached data */
     }
 
-    // Load rider-specific data
+    // Load rider-specific data (rating, vehicle, GCash)
     try {
       const res = await fetch(`${RIDER_API_BASE}/api/riders/profile`, {
         headers: this._getHeaders(),
@@ -625,23 +644,96 @@ class RiderDashboardController {
       if (res.ok) {
         const data = await res.json();
         const rider = data.data || data;
-        this._setText(
-          "rProfStatRating",
-          rider.rating ? parseFloat(rider.rating).toFixed(1) : "0.0",
-        );
+
+        // Rating
+        const ratingVal = rider.rating
+          ? parseFloat(rider.rating).toFixed(1)
+          : "0.0";
+        this._setText("rProfStatRating", ratingVal);
+
+        // Deliveries
         this._setText("rProfStatDeliveries", rider.total_tasks_completed || 0);
-        this._setText(
-          "rProfStatEarnings",
-          `₱${parseFloat(rider.total_earnings || 0).toFixed(0)}`,
-        );
 
         // Vehicle info
         this._setText("rProfValVehicle", rider.vehicle_type || "—");
         this._setText("rProfValPlate", rider.vehicle_plate || "—");
         this._setText("rProfValLicense", rider.license_number || "—");
+
+        // GCash info
+        this._setText("rProfValGcashName", rider.gcash_name || "—");
+        this._setText("rProfValGcashNumber", rider.gcash_number || "—");
+
+        // Store rider_id for ratings
+        this._riderId = rider.rider_id;
       }
     } catch (e) {
-      /* silent */
+      console.warn("Failed to load rider profile", e);
+    }
+
+    // Load ratings preview
+    this._loadProfileRatings();
+  }
+
+  async _loadProfileRatings() {
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/ratings/my-ratings`, {
+        headers: this._getHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const ratingsData = data.data || {};
+
+        // Update total ratings count
+        this._setText("rProfStatTotalRatings", ratingsData.total_ratings || 0);
+
+        // Update rating average if available
+        if (ratingsData.average_rating) {
+          this._setText(
+            "rProfStatRating",
+            parseFloat(ratingsData.average_rating).toFixed(1),
+          );
+        }
+
+        // Show recent ratings preview (last 3)
+        const previewContainer = document.getElementById("rProfRatingsPreview");
+        const ratingsContainer = document.getElementById("rProfRecentRatings");
+
+        if (
+          ratingsData.ratings &&
+          ratingsData.ratings.length > 0 &&
+          previewContainer &&
+          ratingsContainer
+        ) {
+          previewContainer.style.display = "";
+          const recent = ratingsData.ratings.slice(0, 3);
+          ratingsContainer.innerHTML = recent
+            .map(
+              (r) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;">
+              <div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#fff8e1;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-star" style="color:#ffc107;font-size:14px;"></i>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-weight:600;font-size:13px;color:#333;">${r.customer_name || "Customer"}</span>
+                  <span style="font-size:11px;color:#999;">${this._timeAgo(r.rating_date)}</span>
+                </div>
+                <div style="margin-top:2px;">
+                  <span style="color:#ffc107;font-size:12px;letter-spacing:1px;">${"★".repeat(Math.round(r.overall_rating))}${"☆".repeat(5 - Math.round(r.overall_rating))}</span>
+                  <span style="font-size:11px;color:#666;margin-left:4px;">(${r.overall_rating})</span>
+                </div>
+                ${r.feedback_text ? `<div style="font-size:12px;color:#666;margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"${this._esc(r.feedback_text)}"</div>` : ""}
+              </div>
+            </div>
+          `,
+            )
+            .join("");
+        } else if (previewContainer) {
+          previewContainer.style.display = "none";
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load profile ratings", e);
     }
   }
 
@@ -685,8 +777,11 @@ class RiderDashboardController {
       if (placeholder) placeholder.style.display = "";
     }
 
-    // Editable fields
+    // Personal info fields
     this._setText("rProfValName", user.full_name || "—");
+    this._setText("rProfValAddress", user.address || "—");
+
+    // Contact fields
     this._setText("rProfValPhone", user.phone_number || "—");
     this._setText("rProfValEmail", user.email || "—");
   }
@@ -733,6 +828,7 @@ class RiderDashboardController {
     const fieldMap = {
       name: { val: "rProfValName", inp: "rProfInputName" },
       phone: { val: "rProfValPhone", inp: "rProfInputPhone" },
+      address: { val: "rProfValAddress", inp: "rProfInputAddress" },
     };
     const f = fieldMap[field];
     if (!f) return;
@@ -754,9 +850,89 @@ class RiderDashboardController {
     }
   }
 
+  // ── GCash Field Editing ──
+  _toggleGcashFieldEdit(field) {
+    const fieldMap = {
+      gcash_name: { val: "rProfValGcashName", inp: "rProfInputGcashName" },
+      gcash_number: {
+        val: "rProfValGcashNumber",
+        inp: "rProfInputGcashNumber",
+      },
+    };
+    const f = fieldMap[field];
+    if (!f) return;
+
+    const valEl = document.getElementById(f.val);
+    const inpEl = document.getElementById(f.inp);
+    if (!valEl || !inpEl) return;
+
+    if (inpEl.style.display === "none") {
+      inpEl.value = valEl.textContent === "—" ? "" : valEl.textContent;
+      inpEl.style.display = "";
+      valEl.style.display = "none";
+      inpEl.focus();
+      const saveBtn = document.getElementById("rProfSaveGcashBtn");
+      if (saveBtn) saveBtn.style.display = "";
+    } else {
+      inpEl.style.display = "none";
+      valEl.style.display = "";
+    }
+  }
+
+  async _saveGcashInfo() {
+    const nameInp = document.getElementById("rProfInputGcashName");
+    const numberInp = document.getElementById("rProfInputGcashNumber");
+
+    const body = {};
+    if (nameInp && nameInp.style.display !== "none") {
+      body.gcash_name = nameInp.value.trim();
+    }
+    if (numberInp && numberInp.style.display !== "none") {
+      body.gcash_number = numberInp.value.trim();
+    }
+
+    if (Object.keys(body).length === 0) {
+      this._profToast("No changes to save");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${RIDER_API_BASE}/api/riders/gcash`, {
+        method: "PUT",
+        headers: this._getHeaders(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (body.gcash_name !== undefined)
+          this._setText("rProfValGcashName", body.gcash_name || "—");
+        if (body.gcash_number !== undefined)
+          this._setText("rProfValGcashNumber", body.gcash_number || "—");
+
+        ["rProfInputGcashName", "rProfInputGcashNumber"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "none";
+        });
+        ["rProfValGcashName", "rProfValGcashNumber"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = "";
+        });
+        const saveBtn = document.getElementById("rProfSaveGcashBtn");
+        if (saveBtn) saveBtn.style.display = "none";
+
+        this._profToast("Payment info saved!");
+      } else {
+        this._profToast(data.detail || "Update failed");
+      }
+    } catch (e) {
+      this._profToast("Error saving payment info");
+    }
+  }
+
   async _saveProfileChanges() {
     const nameInp = document.getElementById("rProfInputName");
     const phoneInp = document.getElementById("rProfInputPhone");
+    const addressInp = document.getElementById("rProfInputAddress");
 
     const body = {};
     if (nameInp && nameInp.style.display !== "none" && nameInp.value.trim()) {
@@ -768,6 +944,13 @@ class RiderDashboardController {
       phoneInp.value.trim()
     ) {
       body.phone_number = phoneInp.value.trim();
+    }
+    if (
+      addressInp &&
+      addressInp.style.display !== "none" &&
+      addressInp.value.trim()
+    ) {
+      body.address = addressInp.value.trim();
     }
 
     if (Object.keys(body).length === 0) {
@@ -793,12 +976,15 @@ class RiderDashboardController {
         }
         if (body.phone_number)
           this._setText("rProfValPhone", body.phone_number);
+        if (body.address) this._setText("rProfValAddress", body.address);
 
-        ["rProfInputName", "rProfInputPhone"].forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.style.display = "none";
-        });
-        ["rProfValName", "rProfValPhone"].forEach((id) => {
+        ["rProfInputName", "rProfInputPhone", "rProfInputAddress"].forEach(
+          (id) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+          },
+        );
+        ["rProfValName", "rProfValPhone", "rProfValAddress"].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.style.display = "";
         });

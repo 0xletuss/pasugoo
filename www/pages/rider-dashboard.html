@@ -57,6 +57,33 @@
           sans-serif;
       }
 
+      /* Allow scrolling inside non-map panels */
+      .app-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .app-panel > .app-header {
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .app-panel > .app-body {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-top: 0;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+      }
+
       #riderMap {
         position: fixed;
         top: 0;
@@ -535,7 +562,7 @@
         display: flex;
         justify-content: space-around;
         align-items: center;
-        z-index: 30;
+        z-index: 60;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
       }
 
@@ -996,9 +1023,13 @@
           <div class="prof-hero-since" id="rProfHeroSince"></div>
         </div>
 
-        <!-- Quick Stats -->
+        <!-- Quick Stats (Rating + Deliveries only) -->
         <div class="prof-stats-row">
-          <div class="prof-stat-box">
+          <div
+            class="prof-stat-box"
+            id="rProfRatingBox"
+            style="cursor: pointer"
+          >
             <div class="prof-stat-val prof-stat-yellow" id="rProfStatRating">
               0.0
             </div>
@@ -1017,12 +1048,42 @@
           </div>
           <div class="prof-stat-divider"></div>
           <div class="prof-stat-box">
-            <div class="prof-stat-val" id="rProfStatEarnings">₱0</div>
-            <div class="prof-stat-label">Earnings</div>
+            <div class="prof-stat-val" id="rProfStatTotalRatings">0</div>
+            <div class="prof-stat-label">Reviews</div>
           </div>
         </div>
 
-        <!-- Personal Info (editable) -->
+        <!-- Recent Ratings Preview -->
+        <div
+          class="prof-section"
+          id="rProfRatingsPreview"
+          style="display: none"
+        >
+          <div
+            class="prof-section-title"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            "
+          >
+            Recent Ratings
+            <span
+              id="rProfViewAllRatings"
+              style="
+                font-size: 12px;
+                color: #ffc107;
+                cursor: pointer;
+                font-weight: 500;
+              "
+              >View All
+              <i class="fa-solid fa-chevron-right" style="font-size: 10px"></i
+            ></span>
+          </div>
+          <div id="rProfRecentRatings"></div>
+        </div>
+
+        <!-- Personal Information (editable) -->
         <div class="prof-section">
           <div class="prof-section-title">Personal Information</div>
 
@@ -1043,10 +1104,38 @@
             </button>
           </div>
 
+          <div class="prof-field" id="rProfFieldAddress">
+            <div class="prof-field-icon">
+              <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">Address</div>
+              <div class="prof-field-value" id="rProfValAddress">—</div>
+              <input
+                class="prof-field-input"
+                id="rProfInputAddress"
+                type="text"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="address">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <button class="prof-save-btn" id="rProfSaveBtn" style="display: none">
+            <i class="fa-solid fa-check"></i> Save Changes
+          </button>
+        </div>
+
+        <!-- Contact Information -->
+        <div class="prof-section">
+          <div class="prof-section-title">Contact Information</div>
+
           <div class="prof-field" id="rProfFieldPhone">
             <div class="prof-field-icon"><i class="fa-solid fa-phone"></i></div>
             <div class="prof-field-body">
-              <div class="prof-field-label">Phone</div>
+              <div class="prof-field-label">Phone Number</div>
               <div class="prof-field-value" id="rProfValPhone">—</div>
               <input
                 class="prof-field-input"
@@ -1070,9 +1159,58 @@
             </div>
             <div class="prof-field-lock"><i class="fa-solid fa-lock"></i></div>
           </div>
+        </div>
 
-          <button class="prof-save-btn" id="rProfSaveBtn" style="display: none">
-            <i class="fa-solid fa-check"></i> Save Changes
+        <!-- Payment Information (GCash) -->
+        <div class="prof-section">
+          <div class="prof-section-title">Payment Information</div>
+
+          <div class="prof-field" id="rProfFieldGcashName">
+            <div class="prof-field-icon" style="color: #007bff">
+              <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">GCash Name</div>
+              <div class="prof-field-value" id="rProfValGcashName">—</div>
+              <input
+                class="prof-field-input"
+                id="rProfInputGcashName"
+                type="text"
+                placeholder="Enter GCash account name"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="gcash_name">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <div class="prof-field" id="rProfFieldGcashNumber">
+            <div class="prof-field-icon" style="color: #007bff">
+              <i class="fa-solid fa-mobile-screen"></i>
+            </div>
+            <div class="prof-field-body">
+              <div class="prof-field-label">GCash Number</div>
+              <div class="prof-field-value" id="rProfValGcashNumber">—</div>
+              <input
+                class="prof-field-input"
+                id="rProfInputGcashNumber"
+                type="tel"
+                placeholder="09XXXXXXXXX"
+                style="display: none"
+              />
+            </div>
+            <button class="prof-field-edit" data-field="gcash_number">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+          </div>
+
+          <button
+            class="prof-save-btn"
+            id="rProfSaveGcashBtn"
+            style="display: none"
+          >
+            <i class="fa-solid fa-check"></i> Save Payment Info
           </button>
         </div>
 
@@ -1114,9 +1252,9 @@
           </div>
         </div>
 
-        <!-- Account & Security -->
+        <!-- Security -->
         <div class="prof-section">
-          <div class="prof-section-title">Account & Security</div>
+          <div class="prof-section-title">Security</div>
           <div class="prof-menu-item" id="rProfChangePassword">
             <div class="prof-menu-icon"><i class="fa-solid fa-lock"></i></div>
             <span>Change Password</span>
