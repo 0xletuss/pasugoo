@@ -714,6 +714,11 @@
           <i class="fas fa-clipboard-list"></i> Requests
         </a>
 
+        <div class="nav-label" style="margin-top: 18px">Finance</div>
+        <a class="nav-item" data-page="shares" onclick="showPage('shares')">
+          <i class="fas fa-hand-holding-dollar"></i> Shares & Remittance
+        </a>
+
         <div class="nav-label" style="margin-top: 18px">Analytics</div>
         <a class="nav-item" data-page="revenue" onclick="showPage('revenue')">
           <i class="fas fa-peso-sign"></i> Revenue
@@ -857,13 +862,14 @@
                     <th>Total Fee</th>
                     <th>Rider (70%)</th>
                     <th>Admin (30%)</th>
+                    <th>Remit</th>
                     <th>Rating</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="ridersTableBody">
                   <tr>
-                    <td colspan="9" class="spinner">Loading...</td>
+                    <td colspan="10" class="spinner">Loading...</td>
                   </tr>
                 </tbody>
               </table>
@@ -931,6 +937,225 @@
               margin-top: 16px;
             "
           ></div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!--  SHARES & REMITTANCE PAGE                      -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <section class="page-section" id="page-shares">
+          <!-- Tab switcher -->
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              margin-bottom: 20px;
+              align-items: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              class="btn btn-primary btn-sm shares-tab active"
+              data-tab="today"
+              onclick="switchSharesTab('today')"
+            >
+              Today's Remittance
+            </button>
+            <button
+              class="btn btn-outline btn-sm shares-tab"
+              data-tab="history"
+              onclick="switchSharesTab('history')"
+            >
+              History
+            </button>
+            <button
+              class="btn btn-outline btn-sm shares-tab"
+              data-tab="analytics"
+              onclick="switchSharesTab('analytics')"
+            >
+              Share Analytics
+            </button>
+            <div style="flex: 1"></div>
+            <label style="font-size: 13px; color: var(--text-light)"
+              >Date:</label
+            >
+            <input
+              type="date"
+              id="sharesDate"
+              class="btn btn-outline"
+              style="padding: 7px 12px; font-size: 13px"
+              onchange="loadSharesToday()"
+            />
+          </div>
+
+          <!-- TODAY TAB -->
+          <div id="sharesTabToday">
+            <div class="stats-grid" id="sharesTodaySummary"></div>
+            <div class="card">
+              <div class="card-header">
+                <h3 id="sharesTodayTitle">
+                  Today's Rider Earnings & Remittance
+                </h3>
+              </div>
+              <div class="card-body">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rider</th>
+                      <th>Plate</th>
+                      <th>Deliveries</th>
+                      <th>Service Fee</th>
+                      <th>Rider (70%)</th>
+                      <th>Admin (30%)</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sharesTodayBody">
+                    <tr>
+                      <td colspan="8" class="spinner">Loading...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- HISTORY TAB -->
+          <div id="sharesTabHistory" style="display: none">
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+                align-items: center;
+              "
+            >
+              <select
+                id="histRiderFilter"
+                class="btn btn-outline"
+                style="padding: 8px 12px; font-size: 13px"
+                onchange="loadRemittanceHistory()"
+              >
+                <option value="">All Riders</option>
+              </select>
+              <select
+                id="histStatusFilter"
+                class="btn btn-outline"
+                style="padding: 8px 12px; font-size: 13px"
+                onchange="loadRemittanceHistory()"
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="remitted">Remitted</option>
+                <option value="waived">Waived</option>
+              </select>
+              <input
+                type="date"
+                id="histDateFrom"
+                class="btn btn-outline"
+                style="padding: 7px 12px; font-size: 13px"
+                onchange="loadRemittanceHistory()"
+              />
+              <span style="color: var(--text-light)">to</span>
+              <input
+                type="date"
+                id="histDateTo"
+                class="btn btn-outline"
+                style="padding: 7px 12px; font-size: 13px"
+                onchange="loadRemittanceHistory()"
+              />
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Rider</th>
+                      <th>Deliveries</th>
+                      <th>Service Fee</th>
+                      <th>Rider (70%)</th>
+                      <th>Admin (30%)</th>
+                      <th>Status</th>
+                      <th>Remitted At</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historyTableBody">
+                    <tr>
+                      <td colspan="9" class="spinner">Loading...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div
+              id="historyPagination"
+              style="
+                display: flex;
+                justify-content: center;
+                gap: 8px;
+                margin-top: 16px;
+              "
+            ></div>
+          </div>
+
+          <!-- ANALYTICS TAB -->
+          <div id="sharesTabAnalytics" style="display: none">
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                margin-bottom: 16px;
+                align-items: center;
+              "
+            >
+              <label style="font-size: 14px; font-weight: 500">Period:</label>
+              <select
+                id="sharesDays"
+                class="btn btn-outline"
+                style="padding: 8px 12px"
+                onchange="loadSharesAnalytics()"
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </div>
+            <div class="stats-grid" id="sharesAnalyticsSummary"></div>
+            <div class="card" style="margin-bottom: 20px">
+              <div class="card-header"><h3>Daily Shares Trend</h3></div>
+              <div class="chart-container">
+                <div class="chart-bar-group" id="sharesChart"></div>
+                <div class="chart-labels" id="sharesLabels"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <h3>Top Earners (by Admin Share)</h3>
+              </div>
+              <div class="card-body">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rider</th>
+                      <th>Deliveries</th>
+                      <th>Total Fee</th>
+                      <th>Rider (70%)</th>
+                      <th>Admin (30%)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="topEarnersBody">
+                    <tr>
+                      <td colspan="5" class="spinner">Loading...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ═══════════════════════════════════════════════ -->
@@ -1173,6 +1398,7 @@
           dashboard: "Dashboard",
           riders: "Rider Management",
           requests: "Requests",
+          shares: "Shares & Remittance",
           revenue: "Revenue Analytics",
           customers: "Customer Analytics",
         };
@@ -1181,6 +1407,7 @@
         if (page === "dashboard") loadDashboard();
         else if (page === "riders") loadRiders();
         else if (page === "requests") loadRequests();
+        else if (page === "shares") loadShares();
         else if (page === "revenue") loadRevenue();
         else if (page === "customers") loadCustomers();
       }
@@ -1286,8 +1513,21 @@
 
           document.getElementById("ridersTableBody").innerHTML =
             riders
-              .map(
-                (r) => `
+              .map((r) => {
+                let remitBadge = "";
+                if (r.remit_status === "remitted")
+                  remitBadge =
+                    '<span class="badge-status badge-completed" style="background:#e6ffed;color:#38a169;font-size:11px;">Remitted</span>';
+                else if (r.remit_status === "waived")
+                  remitBadge =
+                    '<span class="badge-status" style="background:#fff8e1;color:#e6ac00;font-size:11px;">Waived</span>';
+                else if (r.remit_status === "pending")
+                  remitBadge =
+                    '<span class="badge-status badge-pending" style="background:#fff5f5;color:#e53e3e;font-size:11px;">Pending</span>';
+                else
+                  remitBadge =
+                    '<span style="color:var(--text-light);font-size:11px;">—</span>';
+                return `
         <tr>
           <td>
             <div style="font-weight:600;">${r.full_name || "—"}</div>
@@ -1299,6 +1539,7 @@
           <td>${peso(r.total_service_fee)}</td>
           <td style="color:var(--success);font-weight:600;">${peso(r.rider_share)}</td>
           <td style="color:var(--danger);font-weight:600;">${peso(r.admin_share)}</td>
+          <td>${remitBadge}</td>
           <td>⭐ ${r.rating?.toFixed(1) || "0.0"}</td>
           <td>
             <button class="btn btn-sm btn-primary" onclick="openRiderDetail(${r.rider_id})">
@@ -1309,10 +1550,10 @@
             </button>
           </td>
         </tr>
-      `,
-              )
+      `;
+              })
               .join("") ||
-            '<tr><td colspan="9" style="text-align:center;padding:20px;">No riders found</td></tr>';
+            '<tr><td colspan="10" style="text-align:center;padding:20px;">No riders found</td></tr>';
 
           // Pagination
           const totalPages = Math.ceil((pg.total || 0) / (pg.per_page || 15));
@@ -1679,6 +1920,307 @@
               )
               .join("") ||
             '<tr><td colspan="4" style="text-align:center;padding:20px;">No customer data yet</td></tr>';
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      //  SHARES & REMITTANCE
+      // ═══════════════════════════════════════════════════════════════════════
+      function loadShares() {
+        // Set date picker to today if empty
+        const dp = document.getElementById("sharesDate");
+        if (!dp.value) dp.value = new Date().toISOString().slice(0, 10);
+        loadSharesToday();
+        // Also populate rider filter for history tab
+        populateHistoryRiderFilter();
+      }
+
+      function switchSharesTab(tab) {
+        document.querySelectorAll(".shares-tab").forEach((b) => {
+          b.classList.remove("active");
+          b.classList.remove("btn-primary");
+          b.classList.add("btn-outline");
+        });
+        const activeBtn = document.querySelector(
+          `.shares-tab[data-tab="${tab}"]`,
+        );
+        if (activeBtn) {
+          activeBtn.classList.add("active");
+          activeBtn.classList.remove("btn-outline");
+          activeBtn.classList.add("btn-primary");
+        }
+
+        document.getElementById("sharesTabToday").style.display =
+          tab === "today" ? "" : "none";
+        document.getElementById("sharesTabHistory").style.display =
+          tab === "history" ? "" : "none";
+        document.getElementById("sharesTabAnalytics").style.display =
+          tab === "analytics" ? "" : "none";
+
+        if (tab === "today") loadSharesToday();
+        else if (tab === "history") loadRemittanceHistory();
+        else if (tab === "analytics") loadSharesAnalytics();
+      }
+
+      async function loadSharesToday() {
+        const d =
+          document.getElementById("sharesDate").value ||
+          new Date().toISOString().slice(0, 10);
+        document.getElementById("sharesTodayTitle").textContent =
+          `Rider Earnings & Remittance — ${d}`;
+        try {
+          const res = await api(`/admin/remittances/today?target_date=${d}`);
+          const data = res.data;
+          const s = data.summary;
+
+          document.getElementById("sharesTodaySummary").innerHTML = `
+            <div class="stat-card" style="border-left:4px solid var(--danger);">
+              <div class="stat-info"><h4>Total Admin Share</h4><div class="number">${peso(s.total_admin_share)}</div></div>
+            </div>
+            <div class="stat-card" style="border-left:4px solid var(--success);">
+              <div class="stat-info"><h4>Collected</h4><div class="number">${peso(s.total_collected)}</div>
+              <div class="sub">${s.riders_remitted} rider${s.riders_remitted !== 1 ? "s" : ""}</div></div>
+            </div>
+            <div class="stat-card" style="border-left:4px solid var(--warning);">
+              <div class="stat-info"><h4>Pending</h4><div class="number">${peso(s.total_pending)}</div>
+              <div class="sub">${s.riders_pending} rider${s.riders_pending !== 1 ? "s" : ""}</div></div>
+            </div>
+          `;
+
+          const riders = data.riders || [];
+          document.getElementById("sharesTodayBody").innerHTML =
+            riders
+              .map((r) => {
+                let statusHtml = "";
+                let actionHtml = "";
+                if (r.status === "remitted") {
+                  statusHtml =
+                    '<span class="badge-status badge-completed" style="background:#e6ffed;color:#38a169;">Remitted</span>';
+                  actionHtml = `<span style="font-size:12px;color:var(--text-light);">Done ${r.remitted_at ? new Date(r.remitted_at).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" }) : ""}</span>`;
+                } else if (r.status === "waived") {
+                  statusHtml =
+                    '<span class="badge-status" style="background:#fff8e1;color:#e6ac00;">Waived</span>';
+                  actionHtml =
+                    '<span style="font-size:12px;color:var(--text-light);">Waived</span>';
+                } else if (r.status === "pending") {
+                  statusHtml =
+                    '<span class="badge-status badge-pending" style="background:#fff5f5;color:#e53e3e;">Pending</span>';
+                  actionHtml = `
+                <button class="btn btn-sm btn-primary" onclick="markRemitted(${r.rider_id}, '${d}')" title="Mark as remitted">
+                  <i class="fas fa-check"></i> Remit
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="waiveRemittance(${r.rider_id}, '${d}')" title="Waive" style="margin-left:4px;">
+                  <i class="fas fa-times"></i>
+                </button>
+              `;
+                } else {
+                  statusHtml =
+                    '<span style="color:var(--text-light);font-size:12px;">No earnings</span>';
+                  actionHtml = "—";
+                }
+                return `
+              <tr>
+                <td style="font-weight:600;">${r.rider_name}</td>
+                <td>${r.vehicle_plate || "—"}</td>
+                <td>${r.total_deliveries}</td>
+                <td>${peso(r.total_service_fee)}</td>
+                <td style="color:var(--success);font-weight:600;">${peso(r.rider_share)}</td>
+                <td style="color:var(--danger);font-weight:600;">${peso(r.admin_share)}</td>
+                <td>${statusHtml}</td>
+                <td>${actionHtml}</td>
+              </tr>
+            `;
+              })
+              .join("") ||
+            '<tr><td colspan="8" style="text-align:center;padding:20px;">No riders found</td></tr>';
+        } catch (e) {
+          console.error(e);
+          document.getElementById("sharesTodayBody").innerHTML =
+            '<tr><td colspan="8" class="spinner">Error loading data</td></tr>';
+        }
+      }
+
+      async function markRemitted(riderId, dateStr) {
+        const notes = prompt("Add a note (optional):");
+        try {
+          let url = `/admin/remittances/${riderId}/remit?target_date=${dateStr}`;
+          if (notes) url += `&notes=${encodeURIComponent(notes)}`;
+          const res = await api(url, { method: "POST" });
+          if (res.success) {
+            alert(res.message || "Marked as remitted!");
+            loadSharesToday();
+          } else {
+            alert(res.detail || "Failed");
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Failed to mark as remitted");
+        }
+      }
+
+      async function waiveRemittance(riderId, dateStr) {
+        if (!confirm("Waive admin share for this rider on " + dateStr + "?"))
+          return;
+        const notes = prompt("Reason for waiving (optional):");
+        try {
+          let url = `/admin/remittances/${riderId}/waive?target_date=${dateStr}`;
+          if (notes) url += `&notes=${encodeURIComponent(notes)}`;
+          const res = await api(url, { method: "POST" });
+          if (res.success) {
+            alert("Remittance waived");
+            loadSharesToday();
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Failed to waive");
+        }
+      }
+
+      async function populateHistoryRiderFilter() {
+        try {
+          const res = await api("/admin/riders?per_page=100");
+          const riders = res.data || [];
+          const sel = document.getElementById("histRiderFilter");
+          sel.innerHTML =
+            '<option value="">All Riders</option>' +
+            riders
+              .map(
+                (r) => `<option value="${r.rider_id}">${r.full_name}</option>`,
+              )
+              .join("");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      let histPage = 1;
+      async function loadRemittanceHistory(page) {
+        if (page) histPage = page;
+        const riderId = document.getElementById("histRiderFilter").value;
+        const st = document.getElementById("histStatusFilter").value;
+        const df = document.getElementById("histDateFrom").value;
+        const dt = document.getElementById("histDateTo").value;
+
+        let url = `/admin/remittances/history?page=${histPage}&limit=20`;
+        if (riderId) url += `&rider_id=${riderId}`;
+        if (st) url += `&status=${st}`;
+        if (df) url += `&date_from=${df}`;
+        if (dt) url += `&date_to=${dt}`;
+
+        try {
+          const res = await api(url);
+          const items = res.data?.items || [];
+          const pg = res.data || {};
+
+          document.getElementById("historyTableBody").innerHTML =
+            items
+              .map((r) => {
+                let badge = "";
+                if (r.status === "remitted")
+                  badge =
+                    '<span class="badge-status badge-completed" style="background:#e6ffed;color:#38a169;">Remitted</span>';
+                else if (r.status === "waived")
+                  badge =
+                    '<span class="badge-status" style="background:#fff8e1;color:#e6ac00;">Waived</span>';
+                else
+                  badge =
+                    '<span class="badge-status badge-pending" style="background:#fff5f5;color:#e53e3e;">Pending</span>';
+                return `
+              <tr>
+                <td>${r.date}</td>
+                <td style="font-weight:600;">${r.rider_name}</td>
+                <td>${r.total_deliveries}</td>
+                <td>${peso(r.total_service_fee)}</td>
+                <td style="color:var(--success);">${peso(r.rider_share)}</td>
+                <td style="color:var(--danger);font-weight:600;">${peso(r.admin_share)}</td>
+                <td>${badge}</td>
+                <td>${r.remitted_at ? shortTime(r.remitted_at) : "—"}</td>
+                <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${r.notes || "—"}</td>
+              </tr>
+            `;
+              })
+              .join("") ||
+            '<tr><td colspan="9" style="text-align:center;padding:20px;">No remittance records found</td></tr>';
+
+          const totalPages = pg.pages || 1;
+          let pHtml = "";
+          for (let i = 1; i <= totalPages; i++) {
+            pHtml += `<button class="btn btn-sm ${i === histPage ? "btn-primary" : "btn-outline"}" onclick="loadRemittanceHistory(${i})">${i}</button>`;
+          }
+          document.getElementById("historyPagination").innerHTML = pHtml;
+        } catch (e) {
+          console.error(e);
+          document.getElementById("historyTableBody").innerHTML =
+            '<tr><td colspan="9" class="spinner">Error loading history</td></tr>';
+        }
+      }
+
+      async function loadSharesAnalytics() {
+        const days = document.getElementById("sharesDays").value;
+        try {
+          const res = await api(`/admin/shares/summary?days=${days}`);
+          const d = res.data;
+
+          // Summary cards
+          const lt = d.lifetime;
+          const pd = d.period;
+          document.getElementById("sharesAnalyticsSummary").innerHTML = `
+            <div class="stat-card">
+              <div class="stat-icon yellow"><i class="fas fa-coins"></i></div>
+              <div class="stat-info"><h4>Lifetime Admin Share</h4><div class="number">${peso(lt.admin_share)}</div>
+              <div class="sub">${lt.total_deliveries} deliveries</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+              <div class="stat-info"><h4>Total Collected</h4><div class="number">${peso(lt.total_collected)}</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red"><i class="fas fa-clock"></i></div>
+              <div class="stat-info"><h4>Uncollected</h4><div class="number">${peso(lt.uncollected)}</div></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i class="fas fa-chart-line"></i></div>
+              <div class="stat-info"><h4>Period Admin Share (${days}d)</h4><div class="number">${peso(pd.admin_share)}</div>
+              <div class="sub">${pd.total_deliveries} deliveries</div></div>
+            </div>
+          `;
+
+          // Trend chart
+          const trend = d.daily_trend || [];
+          const maxFee = Math.max(...trend.map((t) => t.admin_share), 1);
+          document.getElementById("sharesChart").innerHTML = trend
+            .map((t) => {
+              const h = Math.max((t.admin_share / maxFee) * 140, 4);
+              return `<div class="chart-bar" style="height:${h}px;background:var(--danger);"><span class="tooltip">${t.date}: Admin ${peso(t.admin_share)} | Rider ${peso(t.rider_share)}</span></div>`;
+            })
+            .join("");
+          document.getElementById("sharesLabels").innerHTML = trend
+            .map((t, i) => {
+              const show =
+                trend.length <= 14 || i % Math.ceil(trend.length / 14) === 0;
+              return `<span>${show ? t.date.slice(5) : ""}</span>`;
+            })
+            .join("");
+
+          // Top earners table
+          const rb = d.rider_breakdown || [];
+          document.getElementById("topEarnersBody").innerHTML =
+            rb
+              .map(
+                (r) => `
+            <tr>
+              <td style="font-weight:600;">${r.rider_name}</td>
+              <td>${r.deliveries}</td>
+              <td>${peso(r.total_fee)}</td>
+              <td style="color:var(--success);">${peso(r.rider_share)}</td>
+              <td style="color:var(--danger);font-weight:600;">${peso(r.admin_share)}</td>
+            </tr>
+          `,
+              )
+              .join("") ||
+            '<tr><td colspan="5" style="text-align:center;padding:20px;">No data yet</td></tr>';
         } catch (e) {
           console.error(e);
         }
