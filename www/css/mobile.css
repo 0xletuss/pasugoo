@@ -40,7 +40,9 @@ body {
 .main-container,
 .modal-content,
 .chat-container,
-#requestsContainer {
+#requestsContainer,
+.app-panel,
+.app-body {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
   overscroll-behavior-y: contain;

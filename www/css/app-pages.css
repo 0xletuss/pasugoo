@@ -95,7 +95,9 @@
 .app-panel {
   position: relative;
   background: var(--white);
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Bottom Navigation (Customer) ────────────────────────── */
