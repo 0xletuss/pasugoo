@@ -37,10 +37,8 @@
 }
 
 .app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex-shrink: 0;
   background: var(--white);
   color: var(--primary-black);
   padding: 16px 20px;
@@ -86,18 +84,25 @@
 }
 
 .app-body {
-  padding-top: calc(68px + env(safe-area-inset-top, 0px));
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 0;
   padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  min-height: 100vh;
   background: var(--white);
 }
 
 .app-panel {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--white);
-  height: 100vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
 }
 
 /* ── Bottom Navigation (Customer) ────────────────────────── */
