@@ -1580,6 +1580,8 @@
 
         try {
           const res = await api(`/admin/riders/${riderId}`);
+          if (!res.success || !res.data)
+            throw new Error(res.detail || "Failed to load rider");
           const r = res.data;
 
           // Also load location
