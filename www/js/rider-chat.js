@@ -1282,8 +1282,11 @@ class RiderChatManager {
               <div style="flex:1">
                 <label style="font-size:11px;color:#666">Service Fee (₱)</label>
                 <input type="number" id="billServiceFee" placeholder="0.00" min="0" step="0.01"
-                  style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+                  style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:14px" readonly>
               </div>
+            </div>
+            <div id="feeDistanceBadge" style="font-size:11px;color:#666;margin-bottom:6px;display:none">
+              <i class="fa-solid fa-route"></i> <span id="feeDistanceText"></span>
             </div>
             <div id="billTotalPreview" style="font-size:13px;color:#333;margin-bottom:8px;display:none">
               Total: <strong>₱<span id="billTotalValue">0.00</span></strong>
@@ -1343,6 +1346,9 @@ class RiderChatManager {
       };
       itemCostInput?.addEventListener("input", updateTotal);
       serviceFeeInput?.addEventListener("input", updateTotal);
+
+      // Auto-fetch service fee based on distance
+      this.autoFetchServiceFee(serviceFeeInput, updateTotal);
 
       document
         .getElementById("submitBillBtn")
@@ -1763,6 +1769,46 @@ class RiderChatManager {
           completeLabels[sType] ||
           '<i class="fa-solid fa-check-circle"></i> Complete Delivery';
       }
+    }
+  }
+
+  // ── Auto-fetch distance-based service fee ────────────────
+  async autoFetchServiceFee(serviceFeeInput, updateTotalFn) {
+    if (!this.requestId || !serviceFeeInput) return;
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `${PASUGO_API_BASE}/api/requests/${this.requestId}/calculate-fee`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) throw new Error("Fee calc API error");
+      const json = await res.json();
+      if (json.success && json.data) {
+        const fee = json.data.service_fee;
+        serviceFeeInput.value = fee.toFixed(2);
+        serviceFeeInput.readOnly = true;
+
+        // Show distance badge
+        const badge = document.getElementById("feeDistanceBadge");
+        const badgeText = document.getElementById("feeDistanceText");
+        if (badge && badgeText && json.data.distance_km != null) {
+          let info = `${json.data.distance_km} km`;
+          if (json.data.duration_minutes)
+            info += ` · ~${Math.round(json.data.duration_minutes)} min`;
+          info += ` → ₱${fee.toFixed(2)}`;
+          badgeText.textContent = info;
+          badge.style.display = "block";
+        }
+        updateTotalFn();
+        console.log(
+          `✅ Service fee auto-calculated: ₱${fee} (${json.data.distance_km} km)`,
+        );
+      }
+    } catch (err) {
+      console.warn("⚠️ Could not auto-fetch service fee:", err.message);
+      // Let rider enter manually
+      serviceFeeInput.readOnly = false;
+      serviceFeeInput.placeholder = "Enter manually";
     }
   }
 
