@@ -1103,12 +1103,15 @@
           if (!res.ok)
             throw new Error(data.detail || data.message || "Login failed");
 
+          // Login response nests everything under data.data
+          const loginData = data.data || data;
+
           // Check user type
-          if (data.user?.user_type !== "admin") {
+          if (loginData.user?.user_type !== "admin") {
             throw new Error("Access denied. Admin account required.");
           }
 
-          TOKEN = data.access_token;
+          TOKEN = loginData.access_token;
           localStorage.setItem("admin_token", TOKEN);
           document.getElementById("loginOverlay").style.display = "none";
           initDashboard();
