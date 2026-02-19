@@ -564,6 +564,8 @@ class RegistrationForm {
 
       submitBtn.disabled = false;
       submitBtn.textContent = "Create Account";
+    } finally {
+      this._isRequestingOTP = false;
     }
   }
 
