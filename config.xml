@@ -32,4 +32,7 @@
     <plugin name="cordova-plugin-statusbar" spec="2" />
     <plugin name="cordova-plugin-device" spec="2" />
     <plugin name="cordova-plugin-network-information" spec="3" />
+    <plugin name="cordova-plugin-geolocation" spec="4.1.0" />
+    <plugin name="cordova-plugin-file" spec="7.0.0" />
+    <plugin name="cordova-plugin-file-transfer" spec="1.7.1" />
 </widget>
