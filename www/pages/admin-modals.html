@@ -1,0 +1,161 @@
+<!-- REJECTION MODAL -->
+<div id="rejectModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center">
+  <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3)">
+    <h3 style="margin: 0 0 12px; font-size: 18px">Reject Rider</h3>
+    <p style="margin: 0 0 16px; color: #666; font-size: 14px">Provide a reason for rejection:</p>
+    <textarea id="rejectReason" placeholder="e.g., ID document is unclear, selfie does not match requirements..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 13px; resize: none" required></textarea>
+    <div style="display: flex; gap: 12px; margin-top: 20px">
+      <button class="btn btn-outline" onclick="closeRejectModal()" style="flex: 1">Cancel</button>
+      <button class="btn btn-danger" onclick="submitReject()" style="flex: 1">Reject</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE MODAL -->
+<div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center">
+  <div style="max-width: 90%; max-height: 90%; position: relative">
+    <button style="position: absolute; top: -40px; right: 0; background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px" onclick="closeImageModal()">×</button>
+    <div style="background: white; border-radius: 8px; padding: 16px; text-align: center">
+      <h3 id="modalTitle" style="margin: 0 0 12px">Document Preview</h3>
+      <img id="modalImage" src="" alt="Preview" style="max-width: 100%; max-height: 500px; border-radius: 8px">
+    </div>
+  </div>
+</div>
+
+<style>
+  #rejectModal, #imageModal {
+    display: none;
+  }
+  #rejectModal.show, #imageModal.show {
+    display: flex;
+  }
+</style>
+
+<script>
+  // Additional share functions
+  async function loadRemittanceHistory(page) {
+    if (page) histPage = page;
+    const riderId = document.getElementById("histRiderFilter").value;
+    const st = document.getElementById("histStatusFilter").value;
+    const df = document.getElementById("histDateFrom").value;
+    const dt = document.getElementById("histDateTo").value;
+
+    let url = `/admin/remittances/history?page=${histPage}&limit=20`;
+    if (riderId) url += `&rider_id=${riderId}`;
+    if (st) url += `&status=${st}`;
+    if (df) url += `&date_from=${df}`;
+    if (dt) url += `&date_to=${dt}`;
+
+    try {
+      const res = await api(url);
+      const items = res.data?.items || [];
+      const pg = res.data || {};
+
+      document.getElementById("historyTableBody").innerHTML =
+        items
+          .map((r) => {
+            let badge = "";
+            if (r.status === "remitted")
+              badge =
+                '<span class="badge-status badge-completed" style="background:#e6ffed;color:#38a169;">Remitted</span>';
+            else if (r.status === "waived")
+              badge =
+                '<span class="badge-status" style="background:#fff8e1;color:#e6ac00;">Waived</span>';
+            else
+              badge =
+                '<span class="badge-status badge-pending" style="background:#fff5f5;color:#e53e3e;">Pending</span>';
+            return `
+        <tr>
+          <td>${r.date}</td>
+          <td style="font-weight:500;">${r.rider_name}</td>
+          <td>${r.total_deliveries}</td>
+          <td>${peso(r.total_service_fee)}</td>
+          <td style="color:var(--success);">${peso(r.rider_share)}</td>
+          <td style="color:var(--danger);">${peso(r.admin_share)}</td>
+          <td>${badge}</td>
+          <td>${r.remitted_at ? new Date(r.remitted_at).toLocaleDateString("en-PH") : "—"}</td>
+          <td style="font-size:12px;color:#666;">${r.notes || "—"}</td>
+        </tr>
+      `;
+          })
+          .join("") ||
+        '<tr><td colspan="9" style="text-align:center;padding:20px;">No records found</td></tr>';
+
+      const totalPages = Math.ceil((pg.total || 0) / 20);
+      let pHtml = "";
+      for (let i = 1; i <= totalPages; i++) {
+        pHtml += `<button class="btn btn-sm ${i === histPage ? "btn-primary" : "btn-outline"}" onclick="loadRemittanceHistory(${i})">${i}</button>`;
+      }
+      document.getElementById("historyPagination").innerHTML = pHtml;
+    } catch (e) {
+      console.error(e);
+      document.getElementById("historyTableBody").innerHTML =
+        '<tr><td colspan="9" class="spinner">Error loading history</td></tr>';
+    }
+  }
+
+  async function loadSharesAnalytics() {
+    const days = document.getElementById("sharesDays").value;
+    try {
+      const res = await api(`/admin/shares/summary?days=${days}`);
+      const d = res.data;
+
+      document.getElementById("sharesAnalyticsSummary").innerHTML = `
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="fas fa-peso-sign"></i></div>
+          <div class="stat-info"><h4>Total Admin Share (Period)</h4><div class="number">${peso(d.period.admin_share)}</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-info"><h4>Collected</h4><div class="number">${peso(d.period.total_collected)}</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="fas fa-building-columns"></i></div>
+          <div class="stat-info"><h4>Lifetime Admin Share</h4><div class="number">${peso(d.lifetime.admin_share)}</div></div>
+        </div>
+      `;
+
+      const trend = d.daily_trend || [];
+      const maxFee = Math.max(...trend.map((t) => t.admin_share), 1);
+      document.getElementById("sharesChart").innerHTML = trend
+        .map((t) => {
+          const h = Math.max((t.admin_share / maxFee) * 140, 4);
+          return `<div class="chart-bar" style="background:#f56565;height:${h}px;"><span class="tooltip">${t.date}: ${peso(t.admin_share)}</span></div>`;
+        })
+        .join("");
+      document.getElementById("sharesLabels").innerHTML = trend
+        .map((t, i) => {
+          const show =
+            trend.length <= 14 || i % Math.ceil(trend.length / 14) === 0;
+          return `<span>${show ? t.date.slice(5) : ""}</span>`;
+        })
+        .join("");
+
+      document.getElementById("topEarnersBody").innerHTML =
+        (d.rider_breakdown || [])
+          .map(
+            (r) => `
+        <tr>
+          <td style="font-weight:500;">${r.rider_name}</td>
+          <td>${r.deliveries}</td>
+          <td>${peso(r.total_fee)}</td>
+          <td style="color:var(--success);">${peso(r.rider_share)}</td>
+          <td style="color:var(--danger);">${peso(r.admin_share)}</td>
+        </tr>
+      `,
+          )
+          .join("") ||
+        '<tr><td colspan="5" style="text-align:center;padding:20px;">No data yet</td></tr>';
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Initialize on load
+  window.addEventListener("DOMContentLoaded", function () {
+    if (TOKEN) {
+      document.getElementById("loginOverlay").style.display = "none";
+      initDashboard();
+    }
+  });
+</script>

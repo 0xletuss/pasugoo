@@ -710,6 +710,9 @@
         <a class="nav-item" data-page="riders" onclick="showPage('riders')">
           <i class="fas fa-motorcycle"></i> Rider Management
         </a>
+        <a class="nav-item" data-page="approvals" onclick="showPage('approvals')">
+          <i class="fas fa-check-circle"></i> Rider Approvals
+        </a>
         <a class="nav-item" data-page="requests" onclick="showPage('requests')">
           <i class="fas fa-clipboard-list"></i> Requests
         </a>
@@ -877,6 +880,50 @@
           </div>
           <div
             id="ridersPagination"
+            style="
+              display: flex;
+              justify-content: center;
+              gap: 8px;
+              margin-top: 16px;
+            "
+          ></div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════ -->
+        <!--  RIDER APPROVALS PAGE                          -->
+        <!-- ═══════════════════════════════════════════════ -->
+        <section class="page-section" id="page-approvals" style="display: none">
+          <div style="margin-bottom: 20px">
+            <h2 style="margin: 0 0 8px 0">Pending Rider Approvals</h2>
+            <p style="margin: 0; color: var(--text-light); font-size: 14px">
+              Review and approve new riders submitting their documents
+            </p>
+          </div>
+
+          <div id="approvalsEmptyState" style="display: none">
+            <div
+              style="
+                text-align: center;
+                padding: 40px 20px;
+                background: #f9f9f9;
+                border-radius: 12px;
+              "
+            >
+              <i
+                class="fas fa-check-circle"
+                style="font-size: 48px; color: #48bb78; margin-bottom: 12px"
+              ></i>
+              <h3 style="margin: 12px 0 6px">All riders approved!</h3>
+              <p style="margin: 0; color: #666; font-size: 14px">
+                No pending approvals at the moment.
+              </p>
+            </div>
+          </div>
+
+          <div id="approvalsList"></div>
+
+          <div
+            id="approvalsPagination"
             style="
               display: flex;
               justify-content: center;
@@ -1397,6 +1444,7 @@
         const titles = {
           dashboard: "Dashboard",
           riders: "Rider Management",
+          approvals: "Rider Approvals",
           requests: "Requests",
           shares: "Shares & Remittance",
           revenue: "Revenue Analytics",
@@ -1406,6 +1454,7 @@
 
         if (page === "dashboard") loadDashboard();
         else if (page === "riders") loadRiders();
+        else if (page === "approvals") loadApprovals();
         else if (page === "requests") loadRequests();
         else if (page === "shares") loadShares();
         else if (page === "revenue") loadRevenue();
@@ -1744,6 +1793,181 @@
             alert("Failed to suspend rider");
           }
         }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      //  REQUESTS
+      // ═══════════════════════════════════════════════════════════════════════
+      //  RIDER APPROVALS
+      // ═══════════════════════════════════════════════════════════════════════
+      let approvalsPage = 1;
+      async function loadApprovals(page) {
+        if (page) approvalsPage = page;
+        const listDiv = document.getElementById("approvalsList");
+        const emptyDiv = document.getElementById("approvalsEmptyState");
+        
+        listDiv.innerHTML = '<div class="spinner">Loading pending approvals...</div>';
+        emptyDiv.style.display = "none";
+
+        try {
+          const res = await api(`/admin/riders/approval/pending?page=${approvalsPage}&per_page=20`);
+          const riders = res.data || [];
+          const pg = res.pagination || {};
+
+          if (!riders || riders.length === 0) {
+            listDiv.innerHTML = "";
+            emptyDiv.style.display = "block";
+            document.getElementById("approvalsPagination").innerHTML = "";
+            return;
+          }
+
+          listDiv.innerHTML = riders
+            .map((r) => {
+              return `
+              <div class="approval-card" style="background: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid var(--border); box-shadow: var(--shadow)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px">
+                  <!-- Rider Info -->
+                  <div>
+                    <h3 style="margin: 0 0 12px; font-size: 16px">${r.full_name}</h3>
+                    <div class="info-grid" style="font-size: 13px">
+                      <div class="info-item">
+                        <label style="color: var(--text-light)">Email</label>
+                        <div style="color: var(--text); word-break: break-all">${r.email}</div>
+                      </div>
+                      <div class="info-item">
+                        <label style="color: var(--text-light)">Phone</label>
+                        <div style="color: var(--text)">${r.phone || "—"}</div>
+                      </div>
+                      <div class="info-item">
+                        <label style="color: var(--text-light)">Vehicle</label>
+                        <div style="color: var(--text)">${r.vehicle_type} (${r.vehicle_plate})</div>
+                      </div>
+                      <div class="info-item">
+                        <label style="color: var(--text-light)">License</label>
+                        <div style="color: var(--text)">${r.license_number}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Document Previews -->
+                  <div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+                      <div style="text-align: center">
+                        <label style="display: block; font-size: 12px; color: var(--text-light); margin-bottom: 8px; font-weight: 600">Selfie</label>
+                        ${r.selfie_url
+                          ? `<img src="${r.selfie_url}" alt="Selfie" style="width: 100%; border-radius: 8px; height: 140px; object-fit: cover; cursor: pointer" onclick="openImageModal('${r.selfie_url}', 'Selfie')">`
+                          : '<div style="background: #f0f0f0; border-radius: 8px; height: 140px; display: flex; align-items: center; justify-content: center; color: #999"><i class="fas fa-image"></i></div>'
+                        }
+                      </div>
+                      <div style="text-align: center">
+                        <label style="display: block; font-size: 12px; color: var(--text-light); margin-bottom: 8px; font-weight: 600">ID Document</label>
+                        ${r.id_document_url
+                          ? r.id_document_url.includes('.pdf')
+                            ? '<div style="background: #f0f0f0; border-radius: 8px; height: 140px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #999; cursor: pointer" onclick="window.open(\'${r.id_document_url}\')"><i class="fas fa-file-pdf" style="font-size: 32px; margin-bottom: 8px"></i><span style="font-size: 11px">PDF</span></div>'
+                            : `<img src="${r.id_document_url}" alt="ID" style="width: 100%; border-radius: 8px; height: 140px; object-fit: cover; cursor: pointer" onclick="openImageModal('${r.id_document_url}', 'ID Document')">`
+                          : '<div style="background: #f0f0f0; border-radius: 8px; height: 140px; display: flex; align-items: center; justify-content: center; color: #999"><i class="fas fa-image"></i></div>'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display: flex; gap: 12px">
+                  <button class="btn btn-primary" onclick="approveRider(${r.rider_id}, '${(r.full_name || "").replace(/'/g, "\\'")}')" style="flex: 1">
+                    <i class="fas fa-check"></i> Approve
+                  </button>
+                  <button class="btn btn-danger" onclick="openRejectModal(${r.rider_id}, '${(r.full_name || "").replace(/'/g, "\\'")}')" style="flex: 1">
+                    <i class="fas fa-times"></i> Reject
+                  </button>
+                </div>
+              </div>
+            `;
+            })
+            .join("");
+
+          // Pagination
+          const totalPages = Math.ceil((pg.total || 0) / (pg.per_page || 20));
+          let pHtml = "";
+          for (let i = 1; i <= totalPages; i++) {
+            pHtml += `<button class="btn btn-sm ${i === approvalsPage ? "btn-primary" : "btn-outline"}" onclick="loadApprovals(${i})">${i}</button>`;
+          }
+          document.getElementById("approvalsPagination").innerHTML = pHtml;
+        } catch (e) {
+          console.error(e);
+          listDiv.innerHTML =
+            '<div style="padding: 20px; text-align: center; color: var(--danger)">Error loading pending approvals</div>';
+        }
+      }
+
+      async function approveRider(riderId, name) {
+        if (!confirm(`Approve rider "${name}"?`)) return;
+
+        try {
+          const res = await api(`/admin/riders/${riderId}/approve`, "POST", {});
+          if (res.success) {
+            alert(`Rider "${name}" approved successfully!`);
+            loadApprovals();
+          } else {
+            alert("Error: " + (res.detail || "Failed to approve rider"));
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Error approving rider");
+        }
+      }
+
+      function openRejectModal(riderId, name) {
+        const modal = document.getElementById("rejectModal");
+        const reason = document.getElementById("rejectReason");
+        reason.value = "";
+        
+        window.rejectRiderId = riderId;
+        window.rejectRiderName = name;
+        
+        modal.style.display = "flex";
+      }
+
+      function closeRejectModal() {
+        document.getElementById("rejectModal").style.display = "none";
+      }
+
+      async function submitReject() {
+        const riderId = window.rejectRiderId;
+        const name = window.rejectRiderName;
+        const reason = document.getElementById("rejectReason").value.trim();
+
+        if (!reason) {
+          alert("Please provide a rejection reason");
+          return;
+        }
+
+        try {
+          const res = await api(`/admin/riders/${riderId}/reject`, "POST", {
+            rejection_reason: reason,
+          });
+          if (res.success) {
+            alert(`Rider "${name}" rejected`);
+            closeRejectModal();
+            loadApprovals();
+          } else {
+            alert("Error: " + (res.detail || "Failed to reject rider"));
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Error rejecting rider");
+        }
+      }
+
+      function openImageModal(url, title) {
+        const modal = document.getElementById("imageModal");
+        document.getElementById("modalImage").src = url;
+        document.getElementById("modalTitle").textContent = title;
+        modal.style.display = "flex";
+      }
+
+      function closeImageModal() {
+        document.getElementById("imageModal").style.display = "none";
       }
 
       // ═══════════════════════════════════════════════════════════════════════
@@ -2255,5 +2479,29 @@
         }
       })();
     </script>
+
+    <!-- REJECTION MODAL -->
+    <div id="rejectModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center">
+      <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3)">
+        <h3 style="margin: 0 0 12px; font-size: 18px">Reject Rider</h3>
+        <p style="margin: 0 0 16px; color: #666; font-size: 14px">Provide a reason for rejection:</p>
+        <textarea id="rejectReason" placeholder="e.g., ID document is unclear, selfie does not match requirements..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 13px; resize: none" required></textarea>
+        <div style="display: flex; gap: 12px; margin-top: 20px">
+          <button class="btn btn-outline" onclick="closeRejectModal()" style="flex: 1">Cancel</button>
+          <button class="btn btn-danger" onclick="submitReject()" style="flex: 1">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMAGE MODAL -->
+    <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center">
+      <div style="max-width: 90%; max-height: 90%; position: relative">
+        <button style="position: absolute; top: -40px; right: 0; background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 20px" onclick="closeImageModal()">×</button>
+        <div style="background: white; border-radius: 8px; padding: 16px; text-align: center">
+          <h3 id="modalTitle" style="margin: 0 0 12px">Document Preview</h3>
+          <img id="modalImage" src="" alt="Preview" style="max-width: 100%; max-height: 500px; border-radius: 8px">
+        </div>
+      </div>
+    </div>
   </body>
 </html>

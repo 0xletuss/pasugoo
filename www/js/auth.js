@@ -570,21 +570,32 @@ class RegistrationForm {
   }
 
   async requestRegistrationOTP(email) {
-    const response = await fetch(
-      `${API_BASE_URL_AUTH}/api/auth/register/request-otp`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email }),
-      },
-    );
+    try {
+      const payload = { email: email.trim().toLowerCase() };
+      console.log("📤 Sending OTP request with:", payload);
+      
+      const response = await fetch(
+        `${API_BASE_URL_AUTH}/api/auth/register/request-otp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Failed to send OTP");
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("❌ OTP request failed:", error);
+        throw new Error(error.detail || error.message || "Failed to send OTP");
+      }
+
+      const data = await response.json();
+      console.log("✅ OTP request successful:", data);
+      return data;
+    } catch (error) {
+      console.error("Error in requestRegistrationOTP:", error);
+      throw error;
     }
-
-    return await response.json();
   }
 
   showOTPVerificationUI() {
@@ -692,20 +703,32 @@ class RegistrationForm {
 
       console.log(`📤 Verifying OTP: '${otp}' for email: ${formData.email}`);
 
+      // Prepare registration payload
+      const registrationData = {
+        email: formData.email,
+        otp: otp,
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+        password: formData.password,
+        user_type: formData.user_type,
+        address: formData.address || "",
+      };
+
+      // Add rider-specific fields if registering as rider
+      if (formData.user_type === "rider") {
+        registrationData.id_number = formData.id_number;
+        registrationData.vehicle_type = formData.vehicle_type;
+        registrationData.vehicle_plate = formData.vehicle_plate;
+        registrationData.license_number = formData.license_number;
+        registrationData.service_zones = formData.service_zones;
+      }
+
       const response = await fetch(
         `${API_BASE_URL_AUTH}/api/auth/register/verify-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: formData.email,
-            otp: otp,
-            full_name: formData.full_name,
-            phone_number: formData.phone_number,
-            password: formData.password,
-            user_type: formData.user_type,
-            address: formData.address || "",
-          }),
+          body: JSON.stringify(registrationData),
         },
       );
 
@@ -800,16 +823,31 @@ class RegistrationForm {
   }
 
   getFormData() {
+    const fullNameEl = document.getElementById("fullName");
+    const emailEl = document.getElementById("email");
+    const phoneEl = document.getElementById("phone");
+    const addressEl = document.getElementById("address");
+    const passwordEl = document.getElementById("password");
+
     const data = {
-      full_name: document.getElementById("fullName").value.trim(),
-      email: document.getElementById("email").value.trim(),
-      phone_number: document.getElementById("phone").value.trim(),
-      password: document.getElementById("password").value,
+      full_name: fullNameEl?.value.trim() || "",
+      email: emailEl?.value.trim() || "",
+      phone_number: phoneEl?.value.trim() || "",
+      password: passwordEl?.value || "",
       user_type: this.userType,
-      address: document.getElementById("address")?.value.trim() || "",
+      address: addressEl?.value.trim() || "",
     };
 
-    // Add rider-specific fields if needed in the future
+    console.log("📝 Form Data Collected:", {
+      full_name: data.full_name ? "✓" : "✗ (empty)",
+      email: data.email ? data.email : "✗ (empty)",
+      phone_number: data.phone_number ? "✓" : "✗ (empty)",
+      password: data.password ? "✓" : "✗ (empty)",
+      user_type: data.user_type,
+      address: data.address ? "✓" : "✗ (empty)",
+    });
+
+    // Add rider-specific fields if user type is rider
     if (this.userType === "rider") {
       data.id_number =
         document.getElementById("idNumber")?.value.trim() || null;

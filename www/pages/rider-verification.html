@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="theme-color" content="#FFC107" />
+    <title>Rider Verification - Pasugo</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/mobile.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      .verification-step {
+        display: none;
+      }
+      .verification-step.active {
+        display: block;
+      }
+
+      .progress-bar {
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: #ffc107;
+        width: 33%;
+        transition: width 0.3s;
+      }
+
+      .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        font-size: 13px;
+      }
+      .step-indicator .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        color: #999;
+      }
+      .step-indicator .step.active {
+        color: #333;
+      }
+      .step-indicator .step .circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        border: 2px solid #e0e0e0;
+      }
+      .step-indicator .step.active .circle {
+        background: #ffc107;
+        color: #000;
+        border-color: #ffc107;
+      }
+      .step-indicator .step.completed .circle {
+        background: #48bb78;
+        color: #fff;
+        border-color: #48bb78;
+      }
+      .step-indicator .step.completed .circle::after {
+        content: "✓";
+      }
+      .step-indicator .step.completed {
+        color: #48bb78;
+      }
+
+      .photo-upload-area {
+        border: 2px dashed #ddd;
+        border-radius: 12px;
+        padding: 30px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: #fafafa;
+      }
+      .photo-upload-area:hover {
+        border-color: #ffc107;
+        background: #fffde7;
+      }
+      .photo-upload-area.active {
+        border-color: #ffc107;
+        background: #fffde7;
+      }
+
+      .photo-upload-area i {
+        font-size: 48px;
+        color: #ffc107;
+        margin-bottom: 12px;
+      }
+      .photo-upload-area p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+      }
+      .photo-upload-area .upload-hint {
+        font-size: 12px;
+        color: #999;
+        margin-top: 8px;
+      }
+
+      .photo-preview {
+        margin-top: 20px;
+        position: relative;
+      }
+      .photo-preview img,
+      .photo-preview video {
+        width: 100%;
+        border-radius: 12px;
+        max-height: 400px;
+        object-fit: cover;
+      }
+
+      .photo-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .photo-actions button {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #f5f5f5;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .photo-actions button.remove {
+        color: #f56565;
+        border-color: #f56565;
+      }
+      .photo-actions button.upload {
+        background: #ffc107;
+        border-color: #ffc107;
+        color: #000;
+      }
+
+      .hidden-input {
+        display: none;
+      }
+
+      .upload-status {
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-size: 13px;
+        display: none;
+      }
+      .upload-status.show {
+        display: block;
+      }
+      .upload-status.loading {
+        background: #e3f2fd;
+        color: #1976d2;
+      }
+      .upload-status.success {
+        background: #e8f5e9;
+        color: #388e3c;
+      }
+      .upload-status.error {
+        background: #ffebee;
+        color: #c62828;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+        width: 100%;
+        text-align: center;
+      }
+      .status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status-badge.approved {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-badge.rejected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+      }
+      .button-group button {
+        flex: 1;
+      }
+      .button-group .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+        border: none;
+      }
+
+      .camera-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #1976d2;
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #1565c0;
+        margin-bottom: 20px;
+      }
+      .info-box strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .spinner-inline {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #ffc107;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="mobile-container-view">
+        <div class="top-header">
+          <div class="nav-bar">
+            <a href="rider-dashboard.html" class="nav-back">←</a>
+            <span class="nav-title">Rider Verification</span>
+          </div>
+          <div class="header-content">
+            <h1>Complete Your Profile</h1>
+            <p>Submit documents to start accepting deliveries</p>
+          </div>
+        </div>
+
+        <div class="main-container">
+          <!-- Progress Bar -->
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+
+          <!-- Step Indicator -->
+          <div class="step-indicator">
+            <div class="step active" id="step1Indicator">
+              <div class="circle">1</div>
+              <span>Selfie</span>
+            </div>
+            <div class="step" id="step2Indicator">
+              <div class="circle">2</div>
+              <span>ID Document</span>
+            </div>
+            <div class="step" id="step3Indicator">
+              <div class="circle">3</div>
+              <span>Review</span>
+            </div>
+          </div>
+
+          <!-- Error/Success Messages -->
+          <div id="alertMessage" class="alert" style="display: none"></div>
+
+          <!-- Step 1: Selfie Upload -->
+          <div class="verification-step active" id="step1">
+            <div class="info-box">
+              <strong>Selfie Requirements:</strong>
+              <ul style="margin: 8px 0 0; padding-left: 20px">
+                <li>Clear face visible</li>
+                <li>Good lighting</li>
+                <li>No filters or effects</li>
+              </ul>
+            </div>
+
+            <label for="selfieInput" class="photo-upload-area" id="selfieUploadArea">
+              <i class="fa-solid fa-camera"></i>
+              <p>Take or upload your selfie</p>
+              <p class="upload-hint">Click to select from camera or gallery</p>
+            </label>
+            <input
+              type="file"
+              id="selfieInput"
+              class="hidden-input"
+              accept="image/*"
+              capture="user"
+            />
+
+            <div id="selfiePreview" class="photo-preview" style="display: none">
+              <img id="selfieImage" alt="Selfie Preview" />
+              <div class="photo-actions">
+                <button
+                  type="button"
+                  class="remove"
+                  onclick="removeSelfie()"
+                >
+                  <i class="fa-solid fa-trash"></i> Remove
+                </button>
+                <button
+                  type="button"
+                  class="upload"
+                  onclick="uploadSelfie()"
+                >
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                </button>
+              </div>
+            </div>
+
+            <div id="selfieStatus" class="upload-status"></div>
+
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="nextStep()"
+              id="nextStep1"
+              style="margin-top: 20px"
+            >
+              Continue
+            </button>
+          </div>
+
+          <!-- Step 2: ID Document Upload -->
+          <div class="verification-step" id="step2">
+            <div class="info-box">
+              <strong>ID Document Requirements:</strong>
+              <ul style="margin: 8px 0 0; padding-left: 20px">
+                <li>Valid government ID</li>
+                <li>Full front view</li>
+                <li>Clearly readable information</li>
+                <li>Supports: JPG, PNG, PDF</li>
+              </ul>
+            </div>
+
+            <label for="idInput" class="photo-upload-area" id="idUploadArea">
+              <i class="fa-solid fa-id-card"></i>
+              <p>Upload your ID document</p>
+              <p class="upload-hint">JPG, PNG or PDF format</p>
+            </label>
+            <input
+              type="file"
+              id="idInput"
+              class="hidden-input"
+              accept="image/*,.pdf"
+            />
+
+            <div id="idPreview" class="photo-preview" style="display: none">
+              <img id="idImage" alt="ID Preview" style="display: none" />
+              <div id="pdfPreview" style="display: none; text-align: center; color: #666">
+                <i class="fa-solid fa-file-pdf" style="font-size: 48px; margin-bottom: 12px"></i>
+                <p id="pdfFileName"></p>
+              </div>
+              <div class="photo-actions">
+                <button type="button" class="remove" onclick="removeID()">
+                  <i class="fa-solid fa-trash"></i> Remove
+                </button>
+                <button type="button" class="upload" onclick="uploadID()">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                </button>
+              </div>
+            </div>
+
+            <div id="idStatus" class="upload-status"></div>
+
+            <div class="button-group" style="margin-top: 20px">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="previousStep()"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                onclick="nextStep()"
+                id="nextStep2"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Review & Submit -->
+          <div class="verification-step" id="step3">
+            <h2 style="margin-top: 0">Review Your Information</h2>
+
+            <div
+              style="
+                background: #f9f9f9;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+              "
+            >
+              <h3 style="margin-top: 0; font-size: 14px; color: #666">Selfie</h3>
+              <div id="reviewSelfie" style="margin-bottom: 20px">
+                <img id="reviewSelfieImg" style="width: 100%; border-radius: 8px; max-height: 300px; object-fit: cover" />
+              </div>
+
+              <h3 style="margin-top: 0; font-size: 14px; color: #666">ID Document</h3>
+              <div id="reviewID">
+                <img id="reviewIDImg" style="width: 100%; border-radius: 8px; max-height: 300px; object-fit: cover; display: none" />
+                <div id="reviewIDPDF" style="display: none; text-align: center; color: #666">
+                  <i class="fa-solid fa-file-pdf" style="font-size: 48px; margin-bottom: 12px"></i>
+                  <p id="reviewPDFName"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="info-box" style="background: #f0f4ff">
+              <strong>What happens next?</strong>
+              <p style="margin: 6px 0 0">
+                An admin will review your documents within 24 hours. You'll
+                receive a notification once approved.
+              </p>
+            </div>
+
+            <div id="reviewStatus" class="upload-status"></div>
+
+            <div class="button-group">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="previousStep()"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                onclick="submitVerification()"
+                id="submitBtn"
+              >
+                Submit for Review
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/rider-verification-controller.js"></script>
+  </body>
+</html>
