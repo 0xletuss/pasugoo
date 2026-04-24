@@ -1904,7 +1904,9 @@
         if (!confirm(`Approve rider "${name}"?`)) return;
 
         try {
-          const res = await api(`/admin/riders/${riderId}/approve`, "POST", {});
+          const res = await api(`/admin/riders/${riderId}/approve`, {
+            method: "POST",
+          });
           if (res.success) {
             alert(`Rider "${name}" approved successfully!`);
             loadApprovals();
@@ -1943,8 +1945,11 @@
         }
 
         try {
-          const res = await api(`/admin/riders/${riderId}/reject`, "POST", {
-            rejection_reason: reason,
+          const res = await api(`/admin/riders/${riderId}/reject`, {
+            method: "POST",
+            body: JSON.stringify({
+              rejection_reason: reason,
+            }),
           });
           if (res.success) {
             alert(`Rider "${name}" rejected`);

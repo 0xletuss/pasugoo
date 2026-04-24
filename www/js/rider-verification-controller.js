@@ -147,11 +147,11 @@ async function uploadSelfie() {
   showStatus(selfieStatus, "Uploading selfie...", "loading");
 
   const formData = new FormData();
-  formData.append("file", selfieFile);
+  formData.append("selfie_file", selfieFile);
 
   try {
     const token = localStorage.getItem("access_token");
-    const response = await fetch(`${API_BASE}/uploads/rider-selfie`, {
+    const response = await fetch(`${API_BASE}/riders/upload/selfie`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -162,7 +162,7 @@ async function uploadSelfie() {
     const data = await response.json();
 
     if (response.ok) {
-      selfieUrl = data.data.url;
+      selfieUrl = data.data.selfie_url;
       showStatus(selfieStatus, "Selfie uploaded successfully", "success");
       setTimeout(() => {
         selfieStatus.classList.remove("show");
@@ -189,11 +189,11 @@ async function uploadID() {
   showStatus(idStatus, "Uploading ID document...", "loading");
 
   const formData = new FormData();
-  formData.append("file", idFile);
+  formData.append("id_file", idFile);
 
   try {
     const token = localStorage.getItem("access_token");
-    const response = await fetch(`${API_BASE}/uploads/rider-id`, {
+    const response = await fetch(`${API_BASE}/riders/upload/id-document`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -204,7 +204,7 @@ async function uploadID() {
     const data = await response.json();
 
     if (response.ok) {
-      idUrl = data.data.url;
+      idUrl = data.data.id_document_url;
       showStatus(idStatus, "ID document uploaded successfully", "success");
       setTimeout(() => {
         idStatus.classList.remove("show");
