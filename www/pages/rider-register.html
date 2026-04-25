@@ -63,6 +63,15 @@
         background: #eee;
         margin: 24px 0;
       }
+      .info-note {
+        background: #e8f4fd;
+        border: 1px solid #cfe6fb;
+        color: #0f4c75;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
     </style>
   </head>
   <body>
@@ -75,33 +84,7 @@
           </div>
           <div class="header-content">
             <h1>Rider Registration</h1>
-            <p>Join Pasugo as a rider and start earning today.</p>
-            <div style="margin-top: 10px; display: flex; gap: 10px">
-              <a
-                href="register.html"
-                style="
-                  padding: 6px 16px;
-                  background: #f0f0f0;
-                  color: #333;
-                  border-radius: 20px;
-                  font-size: 13px;
-                  font-weight: 600;
-                  text-decoration: none;
-                "
-                >Customer</a
-              >
-              <span
-                style="
-                  padding: 6px 16px;
-                  background: var(--primary-black);
-                  color: #fff;
-                  border-radius: 20px;
-                  font-size: 13px;
-                  font-weight: 600;
-                "
-                >Rider</span
-              >
-            </div>
+            <p>One page only for rider account sign up.</p>
           </div>
         </div>
 
@@ -217,6 +200,9 @@
             <!-- Rider-Specific Information -->
             <div class="rider-section">
               <h3><i class="fa-solid fa-motorcycle"></i> Rider Details</h3>
+              <div class="info-note">
+                After account creation, you will upload your selfie and ID in the rider verification page for admin approval.
+              </div>
 
               <div class="form-group">
                 <input
@@ -265,24 +251,6 @@
                 ></textarea>
               </div>
 
-              <div class="form-group">
-                <label
-                  style="
-                    margin-left: 0;
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: #333;
-                  "
-                  >Upload ID Document</label
-                >
-                <input
-                  type="file"
-                  id="idUpload"
-                  name="idUpload"
-                  accept="image/*,.pdf"
-                  style="background: white; border-radius: 10px; padding: 10px"
-                />
-              </div>
             </div>
 
             <div class="checkbox-group">
