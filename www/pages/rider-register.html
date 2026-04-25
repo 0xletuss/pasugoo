@@ -100,7 +100,7 @@
             style="display: none"
           ></div>
 
-          <form id="registerForm" novalidate>
+          <form id="registerForm" data-user-type="rider" novalidate>
             <input type="hidden" id="userType" name="userType" value="rider" />
 
             <!-- Personal Information -->
@@ -313,27 +313,8 @@
       }
 
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initializeForm);
+        document.addEventListener("DOMContentLoaded", setupPasswordStrength);
       } else {
-        initializeForm();
-      }
-
-      function initializeForm() {
-        if (!window.auth || !window.auth.RegistrationForm) {
-          setTimeout(initializeForm, 100);
-          return;
-        }
-        try {
-          const registerForm = new window.auth.RegistrationForm(
-            "#registerForm",
-            "rider",
-          );
-          // Force user type to rider
-          registerForm.userType = "rider";
-        } catch (error) {
-          console.error(error);
-        }
-
         setupPasswordStrength();
       }
 

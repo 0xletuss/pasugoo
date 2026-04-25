@@ -307,6 +307,7 @@ class RegistrationForm {
   constructor(formSelector, userType = "customer") {
     this.form = document.querySelector(formSelector);
     this.userType = userType;
+    this._isRequestingOTP = false;
     this.setupFormListeners();
     this.setupDynamicFields();
   }
@@ -504,6 +505,8 @@ class RegistrationForm {
 
   async handleSubmit(e) {
     e.preventDefault();
+    if (this._isRequestingOTP) return;
+    this._isRequestingOTP = true;
 
     const errorDiv = document.getElementById("errorMessage");
     const successDiv = document.getElementById("successMessage");
@@ -527,6 +530,7 @@ class RegistrationForm {
 
     if (!allValid) {
       this.showError(errorDiv, "Please fix the errors above");
+      this._isRequestingOTP = false;
       return;
     }
 
@@ -599,6 +603,11 @@ class RegistrationForm {
   }
 
   showOTPVerificationUI() {
+    const existingOTPUI = document.getElementById("otpVerificationUI");
+    if (existingOTPUI) {
+      return;
+    }
+
     // Hide the registration form
     const registerForm = document.getElementById("registerForm");
     if (registerForm) {
@@ -753,11 +762,15 @@ class RegistrationForm {
 
       this.showSuccess(
         successDiv,
-        "Registration successful! Redirecting to login...",
+        "Registration successful! Redirecting...",
       );
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        if (formData.user_type === "rider") {
+          window.location.href = "rider-verification.html";
+        } else {
+          window.location.href = "login.html";
+        }
       }, 2000);
     } catch (error) {
       this.showError(errorDiv, error.message);
@@ -1191,8 +1204,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initialize registration form
   const registerForm = document.getElementById("registerForm");
-  if (registerForm) {
-    new RegistrationForm("#registerForm");
+  if (registerForm && !window.__registrationFormInitialized) {
+    const forcedUserType = registerForm.dataset.userType || "customer";
+    const formInstance = new RegistrationForm("#registerForm", forcedUserType);
+    formInstance.userType = forcedUserType;
+    window.__registrationFormInitialized = true;
   }
 
   // Initialize login form

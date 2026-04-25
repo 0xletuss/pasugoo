@@ -72,7 +72,7 @@
             style="display: none"
           ></div>
 
-          <form id="registerForm" novalidate>
+          <form id="registerForm" data-user-type="customer" novalidate>
             <input
               type="hidden"
               id="userType"
@@ -216,28 +216,9 @@
         }
       }
 
-      // Keep existing JS Logic for rider toggle and validation
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initializeForm);
+        document.addEventListener("DOMContentLoaded", setupPasswordStrength);
       } else {
-        initializeForm();
-      }
-
-      function initializeForm() {
-        if (!window.auth || !window.auth.RegistrationForm) {
-          setTimeout(initializeForm, 100);
-          return;
-        }
-        try {
-          // Initialize form logic (customer only)
-          const registerForm = new window.auth.RegistrationForm(
-            "#registerForm",
-            "customer",
-          );
-        } catch (error) {
-          console.error(error);
-        }
-
         setupPasswordStrength();
       }
 
